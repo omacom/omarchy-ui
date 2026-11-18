@@ -6,7 +6,7 @@ import "BorderGeometry.js" as Geometry
 // Ported from the Omarchy shell's shell/Commons/Color.qml (see qt/HARVEST.md): file loading moved
 // to the C++ ThemeSource, and surface text roles resolve through flatColor so a role name such as
 // `foreground` works there too. The theme-switch fade and the changed hook (spec/following.md,
-// "Following" at the bottom) are the kit's own. Everything else is the shell's logic, unchanged.
+// "Following" at the bottom) are the kit's own.
 //
 // Color surfaces for the shell. Foundational palette (foreground, background,
 // accent, urgent) comes from theme/colors.toml. Per-surface roles come from
@@ -16,17 +16,27 @@ import "BorderGeometry.js" as Geometry
 QtObject {
   id: root
 
-  property color foreground: "#cacccc"
-  property color background: "#101315"
-  property color accent: "#cacccc"
-  property color urgent: "#a55555"
-  property color muted: "#707880"
+  readonly property var _paletteDefaults: ({
+    foreground: "#cacccc",
+    background: "#101315",
+    accent: "#cacccc",
+    urgent: "#a55555",
+    muted: "#707880",
+    success: "#7f9f6f",
+    warning: "#c0a060"
+  })
+
+  property color foreground: _paletteDefaults.foreground
+  property color background: _paletteDefaults.background
+  property color accent: _paletteDefaults.accent
+  property color urgent: _paletteDefaults.urgent
+  property color muted: _paletteDefaults.muted
   // colors.toml `mode`; light themes say "light". (Not in the shell, which has no use for it.)
   property bool dark: true
 
   // The kit's own additions (spec/tokens.md "Palette" and "Roles"); not in the shell.
-  property color success: "#7f9f6f"
-  property color warning: "#c0a060"
+  property color success: _paletteDefaults.success
+  property color warning: _paletteDefaults.warning
   // Secondary and faint text are the theme's own Base24 stops: `dark_foreground` (base04) and
   // `muted` (base03, or color8). A theme without them fades the foreground toward the
   // background: the shell's Qt.darker(foreground, 1.5 / 2.0) in a dark theme; in a light theme
@@ -162,48 +172,34 @@ QtObject {
 
   function loadColors(raw) {
     var lines = String(raw || "").split("\n")
-    var foundAccent = false
-    var foundMuted = false
-    var loadedForeground = false
-    var loadedBackground = false
-    var color0Value = ""
-    var color4Value = ""
-    var color7Value = ""
-    var color8Value = ""
+    var named = Object.create(null)
     var nextDark = true
-    var nextSuccess = "#7f9f6f"
-    var nextWarning = "#c0a060"
-    var darkFg = ""
-    var darkFgLegacy = ""
+    var nextUrgent = _paletteDefaults.urgent
+    var nextSuccess = _paletteDefaults.success
+    var nextWarning = _paletteDefaults.warning
     for (var i = 0; i < lines.length; i++) {
       var modeMatch = lines[i].match(/^\s*mode\s*=\s*["']?([A-Za-z]+)/)
       if (modeMatch) nextDark = modeMatch[1].toLowerCase() !== "light"
       var match = lines[i].match(/^\s*([A-Za-z0-9_-]+)\s*=\s*["']?(#[0-9A-Fa-f]{6})/)
       if (!match) continue
-      if (match[1] === "foreground") { foreground = match[2]; loadedForeground = true }
-      else if (match[1] === "background") { background = match[2]; loadedBackground = true }
-      // Prefer the explicit `accent` key; only fall back to color4 when the
-      // theme doesn't define a separate accent. color4 appears later in the
-      // file so the old single-property approach clobbered accent with it.
-      else if (match[1] === "accent") { accent = match[2]; foundAccent = true }
-      else if (match[1] === "muted") { muted = match[2]; foundMuted = true }
-      else if (match[1] === "color0") color0Value = match[2]
-      else if (match[1] === "color4") color4Value = match[2]
-      else if (match[1] === "color7") color7Value = match[2]
-      else if (match[1] === "color8") color8Value = match[2]
-      else if (match[1] === "red" || match[1] === "color1") urgent = match[2]
-      else if (match[1] === "green" || match[1] === "color2") nextSuccess = match[2]
-      else if (match[1] === "yellow" || match[1] === "color3") nextWarning = match[2]
-      else if (match[1] === "dark_foreground") darkFg = match[2]
-      else if (match[1] === "dark_fg") darkFgLegacy = match[2]
+      var key = match[1]
+      var value = match[2]
+      named[key] = value
+      if (key === "red" || key === "color1") nextUrgent = value
+      else if (key === "green" || key === "color2") nextSuccess = value
+      else if (key === "yellow" || key === "color3") nextWarning = value
     }
-    if (!loadedBackground && color0Value.length > 0) background = color0Value
-    if (!loadedForeground && color7Value.length > 0) foreground = color7Value
-    if (!foundAccent && color4Value.length > 0) accent = color4Value
-    if (!foundMuted) muted = color8Value.length > 0 ? color8Value : foreground
-    mutedNamed = foundMuted || color8Value.length > 0
-    // Canonical names win over the legacy short ones, wherever they sit in the file.
-    darkForeground = darkFg !== "" ? darkFg : darkFgLegacy
+    // Resolve every stop from this file so a missing key cannot retain a color
+    // from the previous theme. The explicit foreground, background, and accent
+    // take precedence over their Base24 aliases.
+    foreground = named.foreground || named.color7 || _paletteDefaults.foreground
+    background = named.background || named.color0 || _paletteDefaults.background
+    accent = named.accent || named.color4 || _paletteDefaults.accent
+    urgent = nextUrgent
+    var explicitMuted = named.muted || named.color8
+    muted = explicitMuted || foreground
+    mutedNamed = !!explicitMuted
+    darkForeground = named.dark_foreground || named.dark_fg || ""
     dark = nextDark
     success = nextSuccess
     warning = nextWarning

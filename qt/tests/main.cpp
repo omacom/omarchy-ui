@@ -19,6 +19,7 @@
 #include <QByteArray>
 #include <QObject>
 #include <QProcess>
+#include <QSaveFile>
 #include <QtQml>
 #include <QtQuickTest>
 
@@ -37,6 +38,14 @@ public:
     if (!available()) return false;
     return QProcess::execute(qEnvironmentVariable("OMARCHY_UI_LIVE_SWITCH"),
                              {qEnvironmentVariable("OMARCHY_UI_LIVE_HOME"), name}) == 0;
+  }
+
+  Q_INVOKABLE bool writeColors(const QString &colors) {
+    if (!available()) return false;
+    QSaveFile file(qEnvironmentVariable("OMARCHY_UI_LIVE_HOME")
+                   + QStringLiteral("/.local/state/omarchy/current/theme/colors.toml"));
+    const QByteArray bytes = colors.toUtf8();
+    return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size() && file.commit();
   }
 };
 
