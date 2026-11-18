@@ -1,0 +1,24 @@
+--- a/qt/qml/Omarchy/Ui/Dropdown.qml
++++ b/qt/qml/Omarchy/Ui/Dropdown.qml
+@@ -23,2 +23,4 @@
+   property string value: ""
++  // Set false when the caller owns a confirmed value and handles changed(value).
++  property bool updateValueOnSelection: true
+   property var options: []
+@@ -209,3 +211,3 @@
+             var v = root.optionValue(root.options[currentIndex])
+-            root.value = v
++            if (root.updateValueOnSelection) root.value = v
+             root.changed(v)
+--- a/qt/qml/Omarchy/Ui/SearchableDropdown.qml
++++ b/qt/qml/Omarchy/Ui/SearchableDropdown.qml
+@@ -23,2 +23,4 @@
+   property string value: ""
++  // Set false when the caller owns a confirmed value and handles changed(value).
++  property bool updateValueOnSelection: true
+   property var options: []
+@@ -277,3 +279,3 @@
+                 var v = root.optionValue(root.filtered[currentIndex])
+-                root.value = v
++                if (root.updateValueOnSelection) root.value = v
+                 root.changed(v)
