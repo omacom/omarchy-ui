@@ -79,11 +79,11 @@ ThemeSource::ThemeSource(QObject *parent) : QObject(parent) {
     });
   }
 
+  armWatcher();
   readFiles();
   readHyprland();
   readFont();
   m_language = readText(languagePath()).trimmed();
-  armWatcher();
   if (!m_pinned) connectEvents();
 }
 
@@ -95,6 +95,7 @@ ThemeSource *ThemeSource::instance() {
 ThemeSource *ThemeSource::create(QQmlEngine *, QJSEngine *) { return instance(); }
 
 void ThemeSource::reload() {
+  armWatcher();
   bool any = false;
   const QString colors = m_colors, shell = m_shell, user = m_userShell, name = m_themeName, icons = m_iconTheme;
   readFiles();
@@ -126,7 +127,6 @@ void ThemeSource::reload() {
     emit fontChanged();
   }
 
-  armWatcher();
   if (any) emit settled();
 }
 
@@ -154,20 +154,33 @@ void ThemeSource::readFiles() {
 
 void ThemeSource::armWatcher() {
   // Files replaced by rename drop off a watcher, so re-add after every change.
-  QStringList want;
-  if (m_pinned) {
-    want << m_themeDir;
-  } else {
-    want << currentDir() << QFileInfo(userShellPath()).absolutePath()
-         << home() + QStringLiteral("/.config/fontconfig");
+  QStringList roots{m_themeDir};
+  if (!m_pinned)
+    roots << currentDir() << QFileInfo(userShellPath()).absolutePath()
+          << home() + QStringLiteral("/.config/fontconfig");
+
+  // A fresh home may have none of these directories yet. Follow the nearest
+  // existing parent until its intended watch target appears.
+  QStringList wanted;
+  for (const QString &root : roots) {
+    QString path = root;
+    while (!QFileInfo(path).isDir()) {
+      const QString parent = QFileInfo(path).absolutePath();
+      if (parent == path) break;
+      path = parent;
+    }
+    if (QFileInfo(path).isDir()) wanted << path;
   }
-  for (const QString &p : want)
-    if (QFileInfo::exists(p) && !m_watcher.directories().contains(p)) m_watcher.addPath(p);
-  // A switch renames a new directory into current/theme, which leaves the watch on the old one.
-  if (!m_pinned) {
-    m_watcher.removePath(m_themeDir);
-    if (QFileInfo::exists(m_themeDir)) m_watcher.addPath(m_themeDir);
+  wanted.removeDuplicates();
+
+  // A switch can replace current/theme at the same path. Renew that watch
+  // even if QFileSystemWatcher still reports it.
+  for (const QString &path : m_watcher.directories()) {
+    if (!wanted.contains(path) || (!m_pinned && path == m_themeDir))
+      m_watcher.removePath(path);
   }
+  for (const QString &path : wanted)
+    if (!m_watcher.directories().contains(path)) m_watcher.addPath(path);
   // A directory watch sees files appear, vanish and be renamed over, but not a file rewritten in
   // place (an editor that saves without a rename, `>` in a shell), so the files read are watched
   // as files too. A save by rename leaves the watch on the old file, so every re-read re-arms

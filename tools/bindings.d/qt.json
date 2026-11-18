@@ -15,6 +15,7 @@
   "icons": { "lookup": "build/qt/omarchy-qt-gallery --icon {name} --icon-size {size}" },
   "tests": [
     { "name": "Qt Quick tests", "run": "build/qt-tests/omarchy-qt-tests -silent" },
+    { "name": "first theme creation", "run": "tools/live/run --empty build/qt-tests/omarchy-qt-tests -silent -input qt/tests-runtime/tst_first_theme.qml" },
     { "name": "live switch", "run": "tools/live/run build/qt-tests/omarchy-qt-tests -silent -input qt/tests-live" },
     { "name": "live switch, reduced motion", "run": "tools/live/run build/qt-tests/omarchy-qt-tests -silent -input qt/tests-live", "env": { "OMARCHY_UI_REDUCE_MOTION": "1" } }
   ]

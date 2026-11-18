@@ -2,12 +2,13 @@
 
 # Run a live-switch test (spec/following.md) in a desktop of its own:
 #
-#   tools/live/run [--start NAME] CMD [ARGS...]
+#   tools/live/run [--start NAME | --empty] CMD [ARGS...]
 #
 # Makes a temp HOME with the starting theme (default tokyo-night) set by tools/live/theme-set,
 # an empty XDG_RUNTIME_DIR so no running Hyprland is found (with the signature unset, the
 # resolver would otherwise take the desktop's newest instance), unsets OMARCHY_UI_THEME_DIR,
-# pins the rounding, and runs CMD with OMARCHY_UI_LIVE_HOME naming that HOME. The test switches
+# pins the rounding, and runs CMD with OMARCHY_UI_LIVE_HOME naming that HOME. Pass --empty
+# to start without a theme or configuration tree. The test switches
 # with `tools/live/theme-set "$OMARCHY_UI_LIVE_HOME" catppuccin-latte` (or its own copy of those
 # steps calling the script). The temp tree is removed afterwards; CMD's exit status is ours.
 
@@ -18,14 +19,17 @@ start=tokyo-night
 if [[ ${1:-} == "--start" ]]; then
   start="$2"
   shift 2
+elif [[ ${1:-} == "--empty" ]]; then
+  start=
+  shift
 fi
-(( $# )) || { echo "usage: tools/live/run [--start NAME] CMD [ARGS...]" >&2; exit 2; }
+(( $# )) || { echo "usage: tools/live/run [--start NAME | --empty] CMD [ARGS...]" >&2; exit 2; }
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/omarchy-ui-live.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/home" "$tmp/run"
 chmod 700 "$tmp/run"
-"$ROOT/tools/live/theme-set" "$tmp/home" "$start"
+if [[ -n $start ]]; then "$ROOT/tools/live/theme-set" "$tmp/home" "$start"; fi
 
 # fontconfig's cache stays the user's, so fc-match in the fresh HOME doesn't rebuild it.
 cache="${XDG_CACHE_HOME:-$HOME/.cache}"
