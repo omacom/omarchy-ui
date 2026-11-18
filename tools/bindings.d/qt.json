@@ -16,6 +16,7 @@
   "tests": [
     { "name": "Qt Quick tests", "run": "build/qt-tests/omarchy-qt-tests -silent" },
     { "name": "live switch", "run": "tools/live/run build/qt-tests/omarchy-qt-tests -silent -input qt/tests-live" },
-    { "name": "live switch, reduced motion", "run": "tools/live/run build/qt-tests/omarchy-qt-tests -silent -input qt/tests-live", "env": { "OMARCHY_UI_REDUCE_MOTION": "1" } }
+    { "name": "live switch, reduced motion", "run": "tools/live/run build/qt-tests/omarchy-qt-tests -silent -input qt/tests-live", "env": { "OMARCHY_UI_REDUCE_MOTION": "1" } },
+    { "name": "Hyprland reconnect", "run": "python3 qt/tests-runtime/run_hyprland_reconnect.py build/qt-tests/omarchy-qt-tests" }
   ]
 }

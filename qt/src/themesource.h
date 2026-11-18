@@ -104,6 +104,7 @@ private:
   QFileSystemWatcher m_watcher;
   QTimer m_settle;
   QTimer m_reconnect;
+  bool m_refreshOnConnect = false;
   QLocalSocket m_events;
   QByteArray m_eventBuffer;
 };
