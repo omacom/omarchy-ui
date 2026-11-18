@@ -39,7 +39,7 @@ BorderSurface {
   implicitHeight: row.implicitHeight + contentTopInset + contentBottomInset
 
   Accessible.role: Accessible.AlertMessage
-  Accessible.name: title
+  Accessible.name: title || text
 
   Rectangle {
     anchors.fill: parent
@@ -71,6 +71,7 @@ BorderSurface {
       Layout.alignment: Qt.AlignVCenter
 
       Text {
+        visible: root.title !== ""
         textFormat: Text.PlainText
         text: root.title
         color: Commons.Color.notifications.text
