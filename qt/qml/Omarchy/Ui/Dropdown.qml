@@ -21,6 +21,8 @@ Item {
 
   property string label: ""
   property string value: ""
+  // Set false when the caller owns a confirmed value and handles changed(value).
+  property bool updateValueOnSelection: true
   property var options: []
 
   property color foreground: Commons.Color.popups.text
@@ -207,7 +209,7 @@ Item {
           function selectCurrent() {
             if (currentIndex < 0 || currentIndex >= root.options.length) return
             var v = root.optionValue(root.options[currentIndex])
-            root.value = v
+            if (root.updateValueOnSelection) root.value = v
             root.changed(v)
             popup.close()
           }

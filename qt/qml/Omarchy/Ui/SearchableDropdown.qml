@@ -21,6 +21,8 @@ Item {
 
   property string label: ""
   property string value: ""
+  // Set false when the caller owns a confirmed value and handles changed(value).
+  property bool updateValueOnSelection: true
   property var options: []
   property string placeholderText: Commons.I18n.t("common.search")
   property string emptyText: Commons.I18n.t("common.noMatches")
@@ -275,7 +277,7 @@ Item {
               function selectCurrent() {
                 if (currentIndex < 0 || currentIndex >= root.filtered.length) return
                 var v = root.optionValue(root.filtered[currentIndex])
-                root.value = v
+                if (root.updateValueOnSelection) root.value = v
                 root.changed(v)
                 popup.close()
               }
