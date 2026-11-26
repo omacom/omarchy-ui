@@ -13,6 +13,7 @@
 //! Events are coalesced over 150 ms, then the tokens are re-resolved and delivered only if
 //! they changed.
 
+use std::collections::BTreeSet;
 use std::io::{BufRead, BufReader};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
@@ -41,24 +42,61 @@ impl Drop for Watch {
     }
 }
 
+fn watch_roots(pinned: bool) -> Vec<PathBuf> {
+    let mut roots = vec![source::theme_dir()];
+    if !pinned {
+        roots.push(source::current_dir());
+        if let Some(p) = source::user_shell_path().parent() {
+            roots.push(p.to_path_buf());
+        }
+        if let Some(h) = std::env::var_os("HOME") {
+            roots.push(PathBuf::from(h).join(".config/fontconfig"));
+        }
+    }
+    roots
+}
+
+fn nearest_existing_dir(mut path: PathBuf) -> Option<PathBuf> {
+    while !path.is_dir() {
+        let Some(parent) = path.parent() else { return None };
+        if parent == path {
+            return None;
+        }
+        path = parent.to_path_buf();
+    }
+    Some(path)
+}
+
+/// Watch each target directory or, in a fresh home where it does not exist yet, its nearest
+/// existing parent. Renews `current/theme` when unpinned so a directory swap doesn't leave the
+/// watch on the unlinked inode.
+fn arm_watches(w: &mut notify::RecommendedWatcher, watched: &mut BTreeSet<PathBuf>, pinned: bool) {
+    let wanted: BTreeSet<PathBuf> = watch_roots(pinned).into_iter().filter_map(nearest_existing_dir).collect();
+    let theme_dir = source::theme_dir();
+
+    let to_remove: Vec<PathBuf> = watched
+        .iter()
+        .filter(|p| !wanted.contains(*p) || (!pinned && **p == theme_dir))
+        .cloned()
+        .collect();
+    for path in to_remove {
+        let _ = w.unwatch(&path);
+        watched.remove(&path);
+    }
+    for path in wanted {
+        if !watched.contains(&path) && w.watch(&path, RecursiveMode::NonRecursive).is_ok() {
+            watched.insert(path);
+        }
+    }
+}
+
 /// Call `on_change` on a background thread with fresh tokens whenever the theme, the user's
 /// shell.toml, the font or Hyprland's config changes. With `OMARCHY_UI_THEME_DIR` set, watches
 /// that directory instead and ignores the desktop.
 pub fn watch(initial: Tokens, mut on_change: impl FnMut(Tokens) + Send + 'static) -> Watch {
     let (tx, rx) = mpsc::channel::<()>();
-
-    let mut dirs: Vec<PathBuf> = Vec::new();
-    if source::is_pinned() {
-        dirs.push(source::theme_dir());
-    } else {
-        dirs.push(source::current_dir());
-        if let Some(p) = source::user_shell_path().parent() {
-            dirs.push(p.to_path_buf());
-        }
-        if let Some(h) = std::env::var_os("HOME") {
-            dirs.push(PathBuf::from(h).join(".config/fontconfig"));
-        }
-    }
+    let pinned = source::is_pinned();
+    let mut watched = BTreeSet::new();
 
     let fs_tx = tx.clone();
     let watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
@@ -70,12 +108,7 @@ pub fn watch(initial: Tokens, mut on_change: impl FnMut(Tokens) + Send + 'static
     })
     .ok()
     .map(|mut w| {
-        for d in &dirs {
-            let _ = w.watch(d, RecursiveMode::NonRecursive);
-        }
-        if !source::is_pinned() {
-            let _ = w.watch(&source::theme_dir(), RecursiveMode::NonRecursive);
-        }
+        arm_watches(&mut w, &mut watched, pinned);
         w
     });
     let watcher = Arc::new(Mutex::new(watcher));
@@ -83,11 +116,12 @@ pub fn watch(initial: Tokens, mut on_change: impl FnMut(Tokens) + Send + 'static
     let stop = Arc::new(AtomicBool::new(false));
     let stopped = stop.clone();
 
-    if !source::is_pinned() {
+    if !pinned {
         let hypr_tx = tx.clone();
+        let hypr_stop = stop.clone();
         std::thread::Builder::new()
             .name("omarchy-theme-hypr".into())
-            .spawn(move || hypr_events(hypr_tx))
+            .spawn(move || hypr_events(hypr_tx, hypr_stop))
             .ok();
     }
 
@@ -101,12 +135,8 @@ pub fn watch(initial: Tokens, mut on_change: impl FnMut(Tokens) + Send + 'static
                 if stopped.load(Ordering::SeqCst) {
                     return;
                 }
-                if !source::is_pinned()
-                    && let Some(w) = rearm.lock().unwrap().as_mut()
-                {
-                    let theme = source::theme_dir();
-                    let _ = w.unwatch(&theme);
-                    let _ = w.watch(&theme, RecursiveMode::NonRecursive);
+                if let Some(w) = rearm.lock().unwrap().as_mut() {
+                    arm_watches(w, &mut watched, pinned);
                 }
                 let next = crate::load();
                 if next != last && !stopped.load(Ordering::SeqCst) {
@@ -120,11 +150,17 @@ pub fn watch(initial: Tokens, mut on_change: impl FnMut(Tokens) + Send + 'static
     Watch { _watcher: watcher, stop, wake: tx }
 }
 
-fn hypr_events(tx: mpsc::Sender<()>) {
-    loop {
+fn hypr_events(tx: mpsc::Sender<()>, stop: Arc<AtomicBool>) {
+    let mut refresh_on_connect = false;
+    while !stop.load(Ordering::SeqCst) {
         if let Some(dir) = source::hypr_dir()
             && let Ok(stream) = UnixStream::connect(dir.join(".socket2.sock"))
         {
+            // A compositor that started or restarted may have loaded its config before we
+            // connected; trigger one coalesced refresh.
+            if refresh_on_connect && tx.send(()).is_err() {
+                return;
+            }
             for line in BufReader::new(stream).lines() {
                 let Ok(line) = line else { break };
                 if line.starts_with("configreloaded>>") && tx.send(()).is_err() {
@@ -133,6 +169,7 @@ fn hypr_events(tx: mpsc::Sender<()>) {
             }
         }
         // Hyprland restarted or isn't up yet; try again shortly.
+        refresh_on_connect = true;
         std::thread::sleep(Duration::from_secs(2));
     }
 }
