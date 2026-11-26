@@ -80,5 +80,22 @@ TestCase {
 
     wait(600)
     compare(changes.count, 1, "one switch is one change")
+
+    // Removing palette keys during a live reload should use the same defaults as a fresh load.
+    changes.clear()
+    verify(LiveSwitch.writeColors('mode = "light"\n'))
+    changes.wait(5000)
+    compare(changes.count, 1)
+    compare(Theme.Tokens.revision, 2)
+    var defaults = {
+      accent: "#cacccc", background: "#101315", foreground: "#cacccc",
+      urgent: "#a55555", muted: "#cacccc", success: "#7f9f6f", warning: "#c0a060",
+    }
+    var palette = changes.signalArguments[0][0].palette
+    for (var key in defaults)
+      compare(palette[key], defaults[key] + "ff", key + " token")
+    tryCompare(Theme.Color, "fading", false, 2000)
+    for (var key in defaults)
+      compare(String(Theme.Color[key]), defaults[key], key + " after the fade")
   }
 }
