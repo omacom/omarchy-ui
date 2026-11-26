@@ -56,7 +56,18 @@ ThemeSource::ThemeSource(QObject *parent) : QObject(parent) {
   // one not up yet) is retried every two seconds.
   m_reconnect.setSingleShot(true);
   m_reconnect.setInterval(2000);
-  connect(&m_reconnect, &QTimer::timeout, this, &ThemeSource::connectEvents);
+  connect(&m_reconnect, &QTimer::timeout, this, [this] {
+    m_refreshOnConnect = true;
+    connectEvents();
+  });
+  connect(&m_events, &QLocalSocket::connected, this, [this] {
+    m_reconnect.stop();
+    // The new compositor may have loaded its configuration before we connected.
+    if (m_refreshOnConnect) {
+      m_refreshOnConnect = false;
+      m_settle.start();
+    }
+  });
   connect(&m_events, &QLocalSocket::disconnected, &m_reconnect, qOverload<>(&QTimer::start));
   connect(&m_events, &QLocalSocket::errorOccurred, &m_reconnect, qOverload<>(&QTimer::start));
   connect(&m_events, &QLocalSocket::readyRead, this, [this] {
