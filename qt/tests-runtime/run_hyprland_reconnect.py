@@ -29,8 +29,9 @@ def main(binary):
         runtime = fixture / "run"
         home.mkdir()
         runtime.mkdir()
+        cache = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
         env = dict(os.environ, HOME=str(home), XDG_RUNTIME_DIR=str(runtime),
-                   OMARCHY_UI_LIVE_HOME=str(home), OMARCHY_UI_ROUNDING="")
+                   XDG_CACHE_HOME=cache, OMARCHY_UI_LIVE_HOME=str(home), OMARCHY_UI_ROUNDING="")
         env.pop("OMARCHY_UI_THEME_DIR", None)
         env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
         test = Path(__file__).with_name("tst_hyprland_reconnect.qml")
