@@ -1,0 +1,20 @@
+--- a/qt/qml/Omarchy/Ui/Dropdown.qml
++++ b/qt/qml/Omarchy/Ui/Dropdown.qml
+@@ -242,3 +242,6 @@
+               onPositionChanged: optionList.currentIndex = parent.index
+-              onClicked: optionList.selectCurrent()
++              onClicked: {
++                optionList.currentIndex = parent.index
++                optionList.selectCurrent()
++              }
+             }
+--- a/qt/qml/Omarchy/Ui/SearchableDropdown.qml
++++ b/qt/qml/Omarchy/Ui/SearchableDropdown.qml
+@@ -348,3 +348,6 @@
+                   onPositionChanged: resultList.currentIndex = parent.index
+-                  onClicked: resultList.selectCurrent()
++                  onClicked: {
++                    resultList.currentIndex = parent.index
++                    resultList.selectCurrent()
++                  }
+                 }
