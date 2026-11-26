@@ -46,6 +46,7 @@ package() {
   "$_root/crates/omarchy-theme-ffi/stage" "$srcdir/target/release/libomarchy_theme_ffi.so" "$pkgdir" /usr
 
   cd "$_root"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   # snap.qml renders any QML window to a PNG with the qml tool (docs/using-qt.md).
   install -Dm644 examples/qt-installed/snap.qml "$pkgdir/usr/share/omarchy-ui/snap.qml"
   install -Dm644 examples/qt-installed/main.qml "$pkgdir/usr/share/omarchy-ui/examples/panel.qml"
