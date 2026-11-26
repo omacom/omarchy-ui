@@ -38,6 +38,7 @@ Item {
 
   Column {
     id: labels
+    x: root.LayoutMirroring.enabled ? root.width - width : 0
     width: Math.max(0, root.width - root._trailingInset)
     y: Math.round((root.height - implicitHeight) / 2)
     spacing: Style.spacing.xxs
@@ -71,7 +72,7 @@ Item {
 
   RowLayout {
     id: trailingRow
-    x: root.width - implicitWidth
+    x: root.LayoutMirroring.enabled ? 0 : root.width - implicitWidth
     y: Math.round((root.height - implicitHeight) / 2)
     spacing: Style.spacing.xxs
   }
