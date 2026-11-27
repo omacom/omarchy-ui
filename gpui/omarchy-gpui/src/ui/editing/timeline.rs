@@ -265,11 +265,12 @@ impl RenderOnce for Timeline {
                 } else {
                     (Look::new(c.normal.fill, c.normal.border.clone()), Look::new(c.hover.fill, c.hover.border.clone()))
                 };
+                let label_inset = if selected { t.space(8.0) + sp.md as f32 } else { pad };
                 let text = label_elided(&t, clip.label.clone(), label_size, selected, t.fg())
                     .absolute()
-                    .left(px(pad))
+                    .left(px(label_inset))
                     .top(px(((ch - label_h) / 2.0).floor()))
-                    .w(px((cw - pad * 2.0).max(0.0)));
+                    .w(px((cw - label_inset * 2.0).max(0.0)));
                 let clip_id = ElementId::NamedChild(std::sync::Arc::new(self.id.clone()), format!("clip-{ti}-{ci}").into());
                 let base = div().id(clip_id).size_full().cursor(CursorStyle::PointingHand);
                 let mut body = chrome(base, &t, &rest, &hot, selected, px(small)).child(text);

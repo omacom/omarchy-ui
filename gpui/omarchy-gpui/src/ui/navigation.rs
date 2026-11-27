@@ -35,37 +35,42 @@ pub(crate) fn advance(window: &Window, t: &Paint, s: &str, size: i64, bold: bool
     f32::from(window.text_system().shape_line(SharedString::from(s.to_string()), px(size as f32), &[run], None).width)
 }
 
-/// Where `s`'s ink starts and how wide it is, from the left of its advance box (Qt's
-/// `tightBoundingRect`). GPUI's Linux text system reports no glyph outlines, so the text is
-/// rasterized once through GPUI's SVG renderer (the same system fonts) and its alpha scanned;
-/// results are kept per string, size and weight. Falls back to the advance.
-pub(crate) fn ink_x(window: &Window, cx: &App, t: &Paint, s: &str, size: i64, bold: bool) -> (f32, f32) {
+/// Tight ink rect `(x, width, y, height)` of `s` relative to `(x = 0, baseline = 0)`, in points
+/// (Qt's `tightBoundingRect`). Rasterized once through GPUI's SVG renderer (which handles CFF
+/// fonts and fallback Nerd Fonts) and cached per family, string, size and weight.
+fn ink_rect(cx: &App, t: &Paint, s: &str, size: i64, bold: bool) -> Option<(f32, f32, f32, f32)> {
     use std::cell::RefCell;
     use std::collections::HashMap;
     thread_local! {
-        static INK: RefCell<HashMap<(String, String, i64, bool), Option<(f32, f32)>>> = RefCell::new(HashMap::new());
+        static INK: RefCell<HashMap<(String, String, i64, bool), Option<(f32, f32, f32, f32)>>> = RefCell::new(HashMap::new());
     }
-    let adv = advance(window, t, s, size, bold);
     let family = t.family().to_string();
     let key = (family.clone(), s.to_string(), size, bold);
-    let measured = INK.with(|m| m.borrow().get(&key).copied()).unwrap_or_else(|| {
+    INK.with(|m| m.borrow().get(&key).copied()).unwrap_or_else(|| {
         let found = raster_ink(cx, &family, s, size, bold);
         INK.with(|m| m.borrow_mut().insert(key, found));
         found
-    });
-    measured.unwrap_or((0.0, adv))
+    })
 }
 
-/// The ink's horizontal extent of `s` set at x = 0, in points, measured at 4× from a raster.
-fn raster_ink(cx: &App, family: &str, s: &str, size: i64, bold: bool) -> Option<(f32, f32)> {
+/// Where `s`'s ink starts and how wide it is, from the left of its advance box (Qt's
+/// `tightBoundingRect`). Falls back to the advance.
+pub(crate) fn ink_x(window: &Window, cx: &App, t: &Paint, s: &str, size: i64, bold: bool) -> (f32, f32) {
+    let adv = advance(window, t, s, size, bold);
+    ink_rect(cx, t, s, size, bold).map(|(x, w, _, _)| (x, w)).unwrap_or((0.0, adv))
+}
+
+/// The ink's `(x, width, y, height)` of `s` set at `(x = 0, baseline = 0)`, in points, measured
+/// at 4× from a raster.
+fn raster_ink(cx: &App, family: &str, s: &str, size: i64, bold: bool) -> Option<(f32, f32, f32, f32)> {
     const SCALE: f32 = 4.0;
     let pad = size as f32 * 2.0;
+    let baseline = size as f32 * 2.0;
     let w = pad * 2.0 + size as f32 * (s.chars().count() as f32 + 1.0) * 1.5;
     let h = size as f32 * 3.0;
     let esc = |v: &str| v.replace('&', "&amp;").replace('<', "&lt;").replace('"', "&quot;");
     let svg = format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><text x="{pad}" y="{}" font-family="{}" font-size="{size}" font-weight="{}" fill="#000" xml:space="preserve">{}</text></svg>"##,
-        size as f32 * 2.0,
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><text x="{pad}" y="{baseline}" font-family="{}" font-size="{size}" font-weight="{}" fill="#000" xml:space="preserve">{}</text></svg>"##,
         esc(family),
         if bold { 700 } else { 400 },
         esc(s)
@@ -73,22 +78,32 @@ fn raster_ink(cx: &App, family: &str, s: &str, size: i64, bold: bool) -> Option<
     let image = cx.svg_renderer().render_single_frame(svg.as_bytes(), SCALE).ok()?;
     let bytes = image.as_bytes(0)?;
     let px_w = i32::from(image.size(0).width) as usize;
-    if px_w == 0 {
+    let px_h = i32::from(image.size(0).height) as usize;
+    if px_w == 0 || px_h == 0 {
         return None;
     }
-    let (mut lo, mut hi) = (usize::MAX, 0usize);
+    let (mut lo_x, mut hi_x, mut lo_y, mut hi_y) = (usize::MAX, 0usize, usize::MAX, 0usize);
     for (i, p) in bytes.chunks_exact(4).enumerate() {
         if p[3] > 8 {
             let x = i % px_w;
-            lo = lo.min(x);
-            hi = hi.max(x + 1);
+            let y = i / px_w;
+            lo_x = lo_x.min(x);
+            hi_x = hi_x.max(x + 1);
+            lo_y = lo_y.min(y);
+            hi_y = hi_y.max(y + 1);
         }
     }
-    if lo >= hi {
+    if lo_x >= hi_x || lo_y >= hi_y {
         return None;
     }
-    let scale = px_w as f32 / w;
-    Some((lo as f32 / scale - pad, (hi - lo) as f32 / scale))
+    let scale_x = px_w as f32 / w;
+    let scale_y = px_h as f32 / h;
+    Some((
+        lo_x as f32 / scale_x - pad,
+        (hi_x - lo_x) as f32 / scale_x,
+        lo_y as f32 / scale_y - baseline,
+        (hi_y - lo_y) as f32 / scale_y,
+    ))
 }
 
 /// A glyph boxed the way Qt's `Text` boxes one: its advance, widened by any ink that overhangs
@@ -106,15 +121,58 @@ pub(crate) fn boxed_glyph(window: &Window, cx: &App, t: &Paint, s: &str, size: i
     div().flex_shrink_0().w(px(adv + left + right)).pl(px(left)).child(e)
 }
 
-/// Text centered in a `w` × `h` box by its ink rather than its advance, as the Qt kit's
-/// `OpticalGlyph` centers it: horizontally on the outline's middle, vertically on the line box
-/// rounded to whole points. `hot` is its color under the pointer, when that changes.
+/// Text centered in a `w` × `h` box by its ink horizontally and its line box vertically, as the
+/// Qt kit's `OpticalGlyph` (with `paintedSize: 0`) centers it. `hot` is its color under the
+/// pointer, when that changes.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn optical(window: &Window, cx: &App, t: &Paint, s: &str, size: i64, ink: Hsla, hot: Option<Hsla>, w: f32, h: f32) -> Div {
     let (ix, iw) = ink_x(window, cx, t, s, size, false);
     let x = w / 2.0 - (ix + iw.max(1.0) / 2.0);
     let line = t.tokens().font.line_px(size) as f32;
     let y = ((h - line) / 2.0).round();
+    let mut glyph = label(t, s.to_string(), size, false, ink).absolute().left(px(x)).top(px(y));
+    if let Some(c) = hot {
+        glyph = glyph.group_hover(GROUP, move |s| s.text_color(c));
+    }
+    div().relative().flex_shrink_0().w(px(w)).h(px(h)).child(glyph)
+}
+
+/// Text centered optically in BOTH X and Y inside a `w` × `h` box, snapped to whole points, as
+/// Qt's `PanelActionButton` centers icon glyphs. Reads TrueType `glyf`/`hhea` bounds directly
+/// when available and falls back to the SVG raster bounds (CFF fonts, fallback Nerd Fonts).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn optical_xy(window: &Window, cx: &App, t: &Paint, s: &str, size: i64, ink: Hsla, hot: Option<Hsla>, w: f32, h: f32) -> Div {
+    let k = size as f32;
+    let exact = t.exact_line(size);
+    let single = {
+        let mut chars = s.chars();
+        chars.next().filter(|_| chars.next().is_none())
+    };
+    let (x, y) = if let (Some(ch), Some(file)) = (single, t.tokens().font.file.as_deref())
+        && let Some(g) = super::ink::ink(file, ch)
+        && g.x_max > g.x_min
+        && g.y_max > g.y_min
+    {
+        let ix = g.x_min * k;
+        let iw = (g.x_max - g.x_min) * k;
+        let baseline = (exact + (g.ascent + g.descent) * k) / 2.0;
+        let center_y = baseline - (g.y_min + g.y_max) / 2.0 * k;
+        ((w / 2.0 - (ix + iw / 2.0)).round(), (h / 2.0 - center_y).round())
+    } else if let Some((ix, iw, iy, ih)) = ink_rect(cx, t, s, size, false) {
+        let baseline = t
+            .tokens()
+            .font
+            .file
+            .as_deref()
+            .and_then(super::ink::font_vmetrics)
+            .map(|(asc, desc)| (exact + (asc + desc) * k) / 2.0)
+            .unwrap_or(exact * 0.78);
+        ((w / 2.0 - (ix + iw / 2.0)).round(), (h / 2.0 - (baseline + iy + ih / 2.0)).round())
+    } else {
+        let adv = advance(window, t, s, size, false);
+        let line = t.tokens().font.line_px(size) as f32;
+        (((w - adv) / 2.0).round(), ((h - line) / 2.0).round())
+    };
     let mut glyph = label(t, s.to_string(), size, false, ink).absolute().left(px(x)).top(px(y));
     if let Some(c) = hot {
         glyph = glyph.group_hover(GROUP, move |s| s.text_color(c));
@@ -210,11 +268,13 @@ impl RenderOnce for Keycap {
         let n = &tk.controls.normal;
         let text = key_label(&self.key);
         let (w, h) = (keycap_width(window, &t, &self.key), keycap_height(&t));
-        // The border takes its own room; the label centers in what's inside it.
-        let b = &n.border.widths;
-        let (iw, ih) = (w - (b[1] + b[3]) as f32, h - (b[0] + b[2]) as f32);
-        let e = div().flex_shrink_0().w(px(w)).h(px(h)).rounded(t.radius_small()).bg(color(n.fill));
-        border(e, &n.border).child(optical(window, cx, &t, &text, tk.font.caption, t.fg(), None, iw, ih))
+        div()
+            .relative()
+            .flex_shrink_0()
+            .w(px(w))
+            .h(px(h))
+            .child(super::layer(&Look::new(n.fill, n.border.clone()), t.radius_small()))
+            .child(optical(window, cx, &t, &text, tk.font.caption, t.fg(), None, w, h))
     }
 }
 
@@ -518,8 +578,9 @@ impl RenderOnce for Tabs {
         let sp = &tk.spacing;
         let focus = focus_handle(&self.id, window, cx);
         let focused = focus.is_focused(window);
-        let rest = Look::clear();
-        let hot = Look::new(tk.controls.hover.fill, BorderSpec::none());
+        let hover_fill = color(tk.controls.hover.fill);
+        let pressed_fill = color(tk.controls.pressed.fill);
+        let r = t.radius_small();
         let selected_ink = color(tk.controls.selected.text);
         let n = self.labels.len();
         let mut row = div().flex().flex_row().gap(px(sp.xxs as f32));
@@ -539,6 +600,9 @@ impl RenderOnce for Tabs {
             let base = div()
                 .id(ElementId::NamedChild(Arc::new(self.id.clone()), format!("tab-{i}").into()))
                 .debug_selector(move || selector)
+                .relative()
+                .group(GROUP)
+                .rounded_t(r)
                 .flex()
                 .flex_shrink_0()
                 .items_center()
@@ -550,7 +614,17 @@ impl RenderOnce for Tabs {
                 let fg = t.fg();
                 word = word.group_hover(GROUP, move |s| s.text_color(fg));
             }
-            let mut tab = chrome(base, &t, &rest, &hot, forced, t.radius_small()).child(word);
+            let hover_layer = div().absolute().top_0().left_0().size_full().rounded_t(r).bg(hover_fill);
+            let hover_layer = if forced { hover_layer } else { hover_layer.opacity(0.0).group_hover(GROUP, |s| s.opacity(1.0)) };
+            let pressed_layer = div()
+                .id("pressed")
+                .absolute()
+                .top_0()
+                .left_0()
+                .size_full()
+                .rounded_t(r)
+                .group_active(GROUP, move |s| s.bg(pressed_fill));
+            let mut tab = base.child(hover_layer).child(pressed_layer).child(word);
             if selected {
                 tab = tab.child(div().absolute().left_0().right_0().bottom_0().h(px(sp.xxs as f32)).bg(t.accent()));
             }

@@ -833,7 +833,7 @@ impl RenderOnce for Dropdown {
         let values: Rc<Vec<SharedString>> = Rc::new(self.options.iter().map(|(v, _)| v.clone()).collect());
 
         let words = label_elided(&t, current, tk.font.body, false, t.fg()).flex_1();
-        let chevron = label(&t, "\u{f0140}", tk.font.body, false, t.fg_darker(1.2));
+        let chevron = label(&t, "\u{f0140}", tk.font.body, false, t.dim());
         let base = div()
             .id(self.id.clone())
             .flex()
@@ -896,7 +896,7 @@ impl RenderOnce for Dropdown {
 
         let mut out = div().relative().flex().flex_col().flex_shrink_0().gap(px(sp.label_gap as f32));
         if !self.label.is_empty() {
-            out = out.child(field_label(&t, self.label, true));
+            out = out.child(label(&t, self.label, tk.font.caption, true, t.dim()));
         }
         out = out.child(trigger);
         if open {

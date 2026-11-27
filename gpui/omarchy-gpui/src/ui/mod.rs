@@ -100,9 +100,33 @@ pub fn border<E: Styled>(mut e: E, spec: &BorderSpec) -> E {
     e.border_color(color(spec.color))
 }
 
-/// A layer filling its parent: a state's fill and border.
+/// A layer filling its parent: a state's fill and border. When both are present, the fill is
+/// inset inside the border so a translucent border shows what's behind the control rather than
+/// compositing over its own fill (matching Qt's `Rectangle` / `BorderSurface`).
 pub(crate) fn layer(look: &Look, radius: Pixels) -> Div {
-    border(div().absolute().top_0().left_0().size_full().rounded(radius).bg(color(look.fill)), &look.border)
+    if look.border.is_none() {
+        let base = div().absolute().top_0().left_0().size_full().rounded(radius);
+        return if look.fill.a > 0 { base.bg(color(look.fill)) } else { base };
+    }
+    let ring = border(div().absolute().top_0().left_0().size_full().rounded(radius), &look.border);
+    if look.fill.a == 0 {
+        return ring;
+    }
+    let w = look.border.widths;
+    let r = f32::from(radius);
+    let inner_r = |a: f64, b: f64| px((r - a.max(b) as f32).max(0.0));
+    let fill = div()
+        .absolute()
+        .top(px(w[0] as f32))
+        .right(px(w[1] as f32))
+        .bottom(px(w[2] as f32))
+        .left(px(w[3] as f32))
+        .rounded_tl(inner_r(w[0], w[3]))
+        .rounded_tr(inner_r(w[0], w[1]))
+        .rounded_br(inner_r(w[2], w[1]))
+        .rounded_bl(inner_r(w[2], w[3]))
+        .bg(color(look.fill));
+    div().absolute().top_0().left_0().size_full().child(fill).child(ring)
 }
 
 /// Control chrome under `base`'s children: the `rest` look, swapped for the `hot` look under the

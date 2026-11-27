@@ -14,7 +14,11 @@ use crate::{Paint, color};
 /// A caption-sized bold header in `textDim`: what heads a panel section.
 pub fn section_header(t: &Paint, text: impl Into<SharedString>) -> Div {
     let size = t.tokens().font.caption;
-    label(t, text, size, true, t.dim()).pt(px((size as f32 * 0.15).ceil()))
+    div()
+        .flex()
+        .flex_shrink_0()
+        .pt(px((size as f32 * 0.15).ceil()))
+        .child(label_elided(t, text, size, true, t.dim()))
 }
 
 /// A 1px rule in the foreground at 12%.
@@ -603,17 +607,18 @@ impl RenderOnce for Dialog {
                     if selected { accent } else { p.foreground },
                 )
             };
+            let look = super::Look::new(fill, BorderSpec { color: edge, widths: [line as f64; 4], gradient: None });
             let b = div()
                 .id(text.clone())
+                .relative()
                 .flex()
                 .flex_shrink_0()
                 .items_center()
                 .justify_center()
                 .w(px(t.space(88.0)))
                 .h(px(t.space(34.0)))
-                .bg(color(fill))
-                .border(px(line))
-                .border_color(color(edge))
+                .rounded(t.radius())
+                .child(super::layer(&look, t.radius()))
                 .child(label(&t, text, tk.font.caption, false, color(ink)));
             match handler {
                 Some(f) => b.on_click(move |e, w, cx| f(e, w, cx)),

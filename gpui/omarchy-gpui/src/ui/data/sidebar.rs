@@ -117,9 +117,7 @@ impl RenderOnce for Sidebar {
         for s in self.sections {
             let mut section = div().flex().flex_col().w_full();
             if !self.collapsed && !s.title.is_empty() {
-                section = section.child(
-                    section_header(&t, s.title).pl(inset).pb(px(sp.xxs as f32)).overflow_hidden().text_ellipsis().w_full(),
-                );
+                section = section.child(section_header(&t, s.title).pl(inset).pb(px(sp.xxs as f32)).w_full());
             }
             for item in s.items {
                 let is_selected = self.selected.as_ref() == Some(&item.id);

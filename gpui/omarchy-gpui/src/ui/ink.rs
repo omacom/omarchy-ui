@@ -88,16 +88,44 @@ fn format4(sub: &[u8], ch: u32) -> Option<u16> {
     None
 }
 
-/// `(xMin, xMax, advance)` of `ch`, in ems.
-fn ink_in(b: &[u8], ch: char) -> Option<(f32, f32, f32)> {
+/// A glyph's TrueType ink box and font vertical metrics, all in ems.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct GlyphInk {
+    pub x_min: f32,
+    pub x_max: f32,
+    pub y_min: f32,
+    pub y_max: f32,
+    pub advance: f32,
+    pub ascent: f32,
+    pub descent: f32,
+}
+
+fn vmetrics_in(b: &[u8]) -> Option<(f32, f32)> {
     let head = table(b, b"head")?;
     let upem = u16_at(head, 18)? as f32;
+    if upem <= 0.0 {
+        return None;
+    }
+    let hhea = table(b, b"hhea")?;
+    let ascent = i16_at(hhea, 4)? as f32;
+    let descent = i16_at(hhea, 6)? as f32;
+    Some((ascent / upem, descent / upem))
+}
+
+fn ink_in(b: &[u8], ch: char) -> Option<GlyphInk> {
+    let head = table(b, b"head")?;
+    let upem = u16_at(head, 18)? as f32;
+    if upem <= 0.0 {
+        return None;
+    }
     let long = i16_at(head, 50)? == 1;
     let gid = glyph_id(table(b, b"cmap")?, ch as u32)? as usize;
     if gid == 0 {
         return None;
     }
     let hhea = table(b, b"hhea")?;
+    let ascent = i16_at(hhea, 4)? as f32;
+    let descent = i16_at(hhea, 6)? as f32;
     let metrics = u16_at(hhea, 34)? as usize;
     let hmtx = table(b, b"hmtx")?;
     let advance = u16_at(hmtx, gid.min(metrics.saturating_sub(1)) * 4)? as f32;
@@ -111,16 +139,34 @@ fn ink_in(b: &[u8], ch: char) -> Option<(f32, f32, f32)> {
         return None;
     }
     let glyf = table(b, b"glyf")?.get(from..)?;
-    Some((i16_at(glyf, 2)? as f32 / upem, i16_at(glyf, 6)? as f32 / upem, advance / upem))
+    Some(GlyphInk {
+        x_min: i16_at(glyf, 2)? as f32 / upem,
+        y_min: i16_at(glyf, 4)? as f32 / upem,
+        x_max: i16_at(glyf, 6)? as f32 / upem,
+        y_max: i16_at(glyf, 8)? as f32 / upem,
+        advance: advance / upem,
+        ascent: ascent / upem,
+        descent: descent / upem,
+    })
 }
 
 thread_local! {
     static FONTS: RefCell<HashMap<PathBuf, Option<Rc<Vec<u8>>>>> = RefCell::new(HashMap::new());
 }
 
-/// `(xMin, xMax, advance)` of `ch` in the font file at `path`, in ems; None for a glyph the font
-/// hasn't, or a font this can't read (CFF outlines, a collection).
-pub(crate) fn ink(path: &Path, ch: char) -> Option<(f32, f32, f32)> {
-    let bytes = FONTS.with(|f| f.borrow_mut().entry(path.to_path_buf()).or_insert_with(|| std::fs::read(path).ok().map(Rc::new)).clone())?;
+fn font_bytes(path: &Path) -> Option<Rc<Vec<u8>>> {
+    FONTS.with(|f| f.borrow_mut().entry(path.to_path_buf()).or_insert_with(|| std::fs::read(path).ok().map(Rc::new)).clone())
+}
+
+/// `(ascent, descent)` of the font file at `path`, in ems.
+pub(crate) fn font_vmetrics(path: &Path) -> Option<(f32, f32)> {
+    let bytes = font_bytes(path)?;
+    vmetrics_in(&bytes)
+}
+
+/// Ink box and vertical metrics of `ch` in the font file at `path`, in ems; None for a glyph the
+/// font hasn't, or a font this can't read (CFF outlines, a collection).
+pub(crate) fn ink(path: &Path, ch: char) -> Option<GlyphInk> {
+    let bytes = font_bytes(path)?;
     ink_in(&bytes, ch)
 }

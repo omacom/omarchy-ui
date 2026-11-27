@@ -115,10 +115,10 @@ impl RenderOnce for Slider {
                     .rounded(px(track_h / 2.0))
                     .bg(t.fg()),
             );
-        if self.ticks > 1 {
+        if self.ticks > 2 {
             let tw = 1f32.max(t.space(2.0));
             let th = track_h + t.space(4.0);
-            for i in 0..self.ticks {
+            for i in 1..(self.ticks - 1) {
                 let x = knob / 2.0 + track_w * (i as f32 / (self.ticks - 1) as f32) - tw / 2.0;
                 e = e.child(div().absolute().left(px(x)).top(px(mid - th / 2.0)).w(px(tw)).h(px(th)).rounded(px(1.0)).bg(surface));
             }

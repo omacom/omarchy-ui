@@ -282,8 +282,18 @@ impl RenderOnce for ColorPicker {
             .cursor(CursorStyle::Crosshair)
             .track_focus(&square_focus)
             .child(layer(small).bg(rgb(hr, hg, hb, 255)))
-            .child(layer(small).bg(linear_gradient(90.0, linear_color_stop(rgb(255, 255, 255, 255), 0.0), linear_color_stop(rgb(255, 255, 255, 0), 1.0))))
-            .child(layer(small).bg(linear_gradient(0.0, linear_color_stop(rgb(0, 0, 0, 255), 0.0), linear_color_stop(rgb(0, 0, 0, 0), 1.0))))
+            .child(
+                layer(small).bg(
+                    linear_gradient(90.0, linear_color_stop(rgb(255, 255, 255, 255), 0.0), linear_color_stop(rgb(255, 255, 255, 0), 1.0))
+                        .color_space(gpui::ColorSpace::Srgb),
+                ),
+            )
+            .child(
+                layer(small).bg(
+                    linear_gradient(0.0, linear_color_stop(rgb(0, 0, 0, 255), 0.0), linear_color_stop(rgb(0, 0, 0, 0), 1.0))
+                        .color_space(gpui::ColorSpace::Srgb),
+                ),
+            )
             .child(knob_el(
                 (v.s * square_w - knob / 2.0).round(),
                 ((1.0 - v.v) * square_h - knob / 2.0).round(),
@@ -385,7 +395,10 @@ impl RenderOnce for ColorPicker {
                     .top(px(top))
                     .w(px(strip_w))
                     .h(px(bottom - top))
-                    .bg(linear_gradient(180.0, linear_color_stop(rgb(r0, g0, b0, 255), 0.0), linear_color_stop(rgb(r1, g1, b1, 255), 1.0)));
+                    .bg(
+                        linear_gradient(180.0, linear_color_stop(rgb(r0, g0, b0, 255), 0.0), linear_color_stop(rgb(r1, g1, b1, 255), 1.0))
+                            .color_space(gpui::ColorSpace::Srgb),
+                    );
                 if i == 0 {
                     d = d.rounded_t(px(small));
                 }
@@ -400,7 +413,10 @@ impl RenderOnce for ColorPicker {
         if self.alpha {
             let layers = vec![
                 layer(small).bg(t.track()),
-                layer(small).bg(linear_gradient(180.0, linear_color_stop(opaque, 0.0), linear_color_stop(rgb(r, g, b, 0), 1.0))),
+                layer(small).bg(
+                    linear_gradient(180.0, linear_color_stop(opaque, 0.0), linear_color_stop(rgb(r, g, b, 0), 1.0))
+                        .color_space(gpui::ColorSpace::Srgb),
+                ),
             ];
             top = top.child(strip("alpha", 1.0 - v.a, Rc::new(move |fr| Hsva { a: 1.0 - fr, ..v }), layers, window, cx));
         }
