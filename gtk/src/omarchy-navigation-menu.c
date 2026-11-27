@@ -1009,21 +1009,30 @@ item_snapshot (GtkWidget *w, GtkSnapshot *s)
   int tw;
   omarchy_layout_size (l, &tw, NULL);
   float lx = pad + (reserve_icon ? box + gap : 0);
-  omarchy_draw_layout (s, l, MX (lx, tw), omarchy_nav_center (H, line), &ink);
+  float ly = omarchy_nav_center (H, line);
+  omarchy_draw_layout (s, l, MX (lx, tw), ly, &ink);
 
   if (self->shortcut && *self->shortcut) {
-    int hline = omarchy_line_height (p->body_small);
     g_autoptr (PangoLayout) h = omarchy_layout (w, self->shortcut, p->body_small, FALSE);
-    /* Anchored right: at its fractional advance, as Qt places it. */
+    /* Anchored right: at its fractional advance, on the label's baseline, as Qt places it. */
     float hw = (float) omarchy_nav_text_advance (w, self->shortcut, p->body_small, FALSE);
     float hx = W - pad - (reserve_mark ? box + gap : 0) - hw;
-    omarchy_draw_layout (s, h, MX (hx, hw), omarchy_nav_center (H, hline), enabled ? &p->text_dim : &p->text_faint);
+    float label_base = pango_layout_get_baseline (l) / (float) PANGO_SCALE;
+    float hint_base = pango_layout_get_baseline (h) / (float) PANGO_SCALE;
+    float hy = roundf (ly + label_base - hint_base);
+    omarchy_draw_layout (s, h, MX (hx, hw), hy, enabled ? &p->text_dim : &p->text_faint);
   }
 
   gboolean mark = self->checkable && self->checked;
-  if (mark || omarchy_menu_item_get_has_submenu (self)) {
-    const char *glyph = mark ? (self->exclusive ? "●" : "✓") : "\xef\x81\x94"; /* U+F054 */
-    int px = mark ? (self->exclusive ? p->caption : p->body) : p->icon_small;
+  if (mark && self->exclusive) {
+    float dot = omarchy_space (6);
+    float mx = MX (W - pad - box, box) + roundf ((box - dot) / 2.0f);
+    float my = omarchy_nav_center (H, dot);
+    const GdkRGBA *c = !enabled ? &p->text_faint : &p->accent;
+    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (mx, my, dot, dot), dot / 2.0f, c);
+  } else if (mark || omarchy_menu_item_get_has_submenu (self)) {
+    const char *glyph = mark ? "✓" : "\xef\x81\x94"; /* U+F054 */
+    int px = mark ? p->body : p->icon_small;
     const GdkRGBA *c = !enabled ? &p->text_faint : mark ? &p->accent : &p->text_dim;
     omarchy_nav_draw_glyph (w, s, glyph, px, MX (W - pad - box, box), 0, box, H, c);
   }

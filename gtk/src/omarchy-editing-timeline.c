@@ -271,6 +271,7 @@ tl_snapshot (GtkWidget *w, GtkSnapshot *s)
   }
 
   /* ---- lanes and clips */
+  gtk_snapshot_push_clip (s, &GRAPHENE_RECT_INIT (0, g.ruler_h, g.W, MAX (0.0f, g.H - g.ruler_h)));
   int line = omarchy_line_height (t->body_small);
   float stroke = MAX (1, omarchy_space (2));
   for (guint i = 0; i < self->tracks->len; i++) {
@@ -285,7 +286,7 @@ tl_snapshot (GtkWidget *w, GtkSnapshot *s)
       const OmarchyBorder *b = selected ? &sel : hover ? &p->hover.border : &p->normal.border;
       const GdkRGBA *fill = selected ? &p->selected.fill : hover ? &p->hover.fill : &p->normal.fill;
       omarchy_draw_surface (s, &r, g.small, fill, b);
-      int label_inset = selected ? omarchy_space (8) + t->md : t->control_padding_x;
+      int label_inset = selected ? omarchy_space (8) + t->control_padding_x : t->control_padding_x;
       int avail = (int) r.size.width - label_inset * 2;
       if (c->label && *c->label && avail > 0) {
         g_autoptr (PangoLayout) l = omarchy_layout (w, c->label, t->body_small, selected);
@@ -300,6 +301,7 @@ tl_snapshot (GtkWidget *w, GtkSnapshot *s)
   }
   for (int i = 0; i < 2; i++)
     gtk_widget_snapshot_child (w, self->handles[i], s);
+  gtk_snapshot_pop (s);
 
   /* ---- playhead */
   if (tl_playhead_visible (self)) {
@@ -307,10 +309,11 @@ tl_snapshot (GtkWidget *w, GtkSnapshot *s)
     GdkRGBA c = tl_hot (self) ? omarchy_editing_hot (&p->accent) : p->accent;
     float x = (float) (tl_x_at (self, &g, self->position) - omarchy_editing_round (head / 2.0));
     float y = g.ruler_h - head;
+    float bottom = self->tracks->len > 0 ? tl_lane_y (&g, (int) self->tracks->len - 1) + g.lane_h : g.H;
     omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (x, y, head, head), g.small, &c);
     omarchy_draw_fill (s,
                        &GRAPHENE_RECT_INIT (x + (float) omarchy_editing_round ((head - line_w) / 2.0), y + head, line_w,
-                                            g.H - y - head),
+                                            MAX (0.0f, bottom - y - head)),
                        0, &c);
   }
   gtk_snapshot_pop (s);
@@ -1061,11 +1064,21 @@ scrub_snapshot (GtkWidget *w, GtkSnapshot *s)
 
   float cy = H / 2.0f, track_y = (H - g.track_h) / 2.0f;
   if (g.track_w > 0) {
-    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (g.track_x, track_y, g.track_w, g.track_h), g.track_h / 2.0f, &p->track);
-    float played = (float) omarchy_editing_round (g.track_w * scrub_progress (self));
-    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (g.track_x, track_y, played, g.track_h), g.track_h / 2.0f, &p->foreground);
+    float ring = MAX (1, omarchy_space (2));
+    float inner_k = MAX (4.0f, g.knob - ring * 2.0f);
+    float knob_cx = g.track_x + (float) omarchy_editing_round (g.track_w * scrub_progress (self));
+    float half_k = g.knob / 2.0f;
+    float fill_w = MAX (0.0f, MIN (g.track_w, knob_cx - half_k - g.track_x));
+    if (fill_w > 0)
+      omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (g.track_x, track_y, fill_w, g.track_h), g.track_h / 2.0f,
+                         &p->foreground);
+    float un_start = MIN (g.track_x + g.track_w, MAX (g.track_x, knob_cx + half_k));
+    float un_w = MAX (0.0f, g.track_x + g.track_w - un_start);
+    if (un_w > 0)
+      omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (un_start, track_y, un_w, g.track_h), g.track_h / 2.0f, &p->track);
     gboolean hot = self->cursor || self->dragging || self->over_bar || omarchy_widget_focus_shown (w);
-    omarchy_editing_draw_knob (s, g.track_x + played, cy, hot, &p->foreground, omarchy_editing_surface (p, self->surface));
+    float k = inner_k * (hot ? 1.15f : 1.0f);
+    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (knob_cx - k / 2, cy - k / 2, k, k), k / 2, &p->foreground);
   }
   scrub_geo_clear (&g);
 }

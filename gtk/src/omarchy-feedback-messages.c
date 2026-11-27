@@ -570,7 +570,10 @@ banner_measure (GtkWidget *w, GtkOrientation o, int for_size, int *min, int *nat
     *nat += across;
   } else {
     gtk_widget_measure (self->row, o, for_size >= 0 ? MAX (0, for_size - across) : -1, min, nat, NULL, NULL);
-    int floor_h = omarchy_tokens ()->control_height;
+    const OmarchyTokens *t = omarchy_tokens ();
+    float bw = MAX (omarchy_border_max (&t->normal.border), omarchy_border_max (&t->hover.border));
+    int button_min_h = (int) ceil (omarchy_line_height (t->body) + t->control_padding_y * 2 + bw * 2);
+    int floor_h = MAX (t->control_height, button_min_h);
     *min = MAX (floor_h, *min) + down;
     *nat = MAX (floor_h, *nat) + down;
   }
@@ -590,10 +593,8 @@ banner_allocate (GtkWidget *w, int width, int height, int baseline)
   banner_insets (self, in);
   gboolean rtl = gtk_widget_get_direction (w) == GTK_TEXT_DIR_RTL;
   int rw = MAX (0, width - (int) (in[1] + in[3]));
-  int rh;
-  gtk_widget_measure (self->row, GTK_ORIENTATION_VERTICAL, rw, NULL, &rh, NULL, NULL);
-  int inner = height - (int) (in[0] + in[2]);
-  GtkAllocation a = { (int) (rtl ? in[1] : in[3]), (int) in[0] + (int) roundf ((inner - rh) / 2.0f), rw, rh };
+  int inner = MAX (0, height - (int) (in[0] + in[2]));
+  GtkAllocation a = { (int) (rtl ? in[1] : in[3]), (int) in[0], rw, inner };
   gtk_widget_size_allocate (self->row, &a, -1);
 }
 
@@ -929,7 +930,7 @@ static void
 toast_repaint (OmarchyToast *self)
 {
   const OmarchyTokens *p = omarchy_paint ();
-  GdkRGBA body = omarchy_rgba_darker (&p->notifications.text, 1.15);
+  GdkRGBA body = omarchy_rgba_alpha (&p->notifications.text, 0.78);
   glyph_set_color (self->mark, &p->notifications.text);
   omarchy_label_set_color (OMARCHY_LABEL (self->title), &p->notifications.text);
   omarchy_label_set_color (OMARCHY_LABEL (self->text), &body);
@@ -972,7 +973,9 @@ toast_allocate (GtkWidget *w, int width, int height, int baseline)
   int rw = MAX (0, width - (int) (in[1] + in[3]));
   int rh;
   gtk_widget_measure (self->row, GTK_ORIENTATION_VERTICAL, rw, NULL, &rh, NULL, NULL);
-  GtkAllocation a = { (int) (rtl ? in[1] : in[3]), (int) in[0], rw, rh };
+  float line = self->countdown >= 0 ? MAX (1, omarchy_space (2)) : 0;
+  float avail = height - (in[0] + in[2]) - line;
+  GtkAllocation a = { (int) (rtl ? in[1] : in[3]), (int) in[0] + (int) roundf ((avail - rh) / 2.0f), rw, rh };
   gtk_widget_size_allocate (self->row, &a, -1);
 }
 
@@ -1229,7 +1232,10 @@ omarchy_toast_set_countdown (OmarchyToast *self, double countdown)
 {
   if (self->countdown == countdown)
     return;
+  gboolean had = self->countdown >= 0;
   self->countdown = countdown;
+  if (had != (self->countdown >= 0))
+    gtk_widget_queue_allocate (GTK_WIDGET (self));
   gtk_widget_queue_draw (GTK_WIDGET (self));
   g_object_notify_by_pspec (G_OBJECT (self), t_props[T_PROP_COUNTDOWN]);
 }

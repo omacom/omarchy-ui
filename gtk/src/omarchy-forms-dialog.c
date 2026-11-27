@@ -82,6 +82,17 @@ body_visible (OmarchyDialog *self)
   return FALSE;
 }
 
+static float
+dialog_button_width (GtkWidget *w, const char *text)
+{
+  const OmarchyTokens *t = omarchy_tokens ();
+  g_autoptr (PangoLayout) l = omarchy_layout (w, text, t->caption, FALSE);
+  PangoRectangle logical;
+  pango_layout_get_extents (l, NULL, &logical);
+  float tw = ceilf (logical.width / (float) PANGO_SCALE);
+  return MAX ((float) omarchy_space (88), tw + t->control_padding_x * 2);
+}
+
 static Geo
 geo (OmarchyDialog *self, float W, float H)
 {
@@ -121,15 +132,17 @@ geo (OmarchyDialog *self, float W, float H)
   g.title_y += g.card.origin.y + g.inset[0];
   g.message_y += g.card.origin.y + g.inset[0];
   g.body = GRAPHENE_RECT_INIT (g.card.origin.x + g.inset[3], g.card.origin.y + g.inset[0] + body_y, g.content_w, g.body_h);
-  float bwid = omarchy_space (88), bh = omarchy_space (34);
+  float bw0 = dialog_button_width (GTK_WIDGET (self), secondary_text (self));
+  float bw1 = dialog_button_width (GTK_WIDGET (self), primary_text (self));
+  float bh = omarchy_space (34);
   float right = g.card.origin.x + cw - g.inset[1], bottom = g.card.origin.y + ch - g.inset[2];
   if (gtk_widget_get_direction (GTK_WIDGET (self)) == GTK_TEXT_DIR_RTL) {
     float left = g.card.origin.x + g.inset[3];
-    g.buttons[1] = GRAPHENE_RECT_INIT (left, bottom - bh, bwid, bh);
-    g.buttons[0] = GRAPHENE_RECT_INIT (left + bwid + gap, bottom - bh, bwid, bh);
+    g.buttons[1] = GRAPHENE_RECT_INIT (left, bottom - bh, bw1, bh);
+    g.buttons[0] = GRAPHENE_RECT_INIT (left + bw1 + gap, bottom - bh, bw0, bh);
   } else {
-    g.buttons[1] = GRAPHENE_RECT_INIT (right - bwid, bottom - bh, bwid, bh);
-    g.buttons[0] = GRAPHENE_RECT_INIT (right - 2 * bwid - gap, bottom - bh, bwid, bh);
+    g.buttons[1] = GRAPHENE_RECT_INIT (right - bw1, bottom - bh, bw1, bh);
+    g.buttons[0] = GRAPHENE_RECT_INIT (right - bw1 - gap - bw0, bottom - bh, bw0, bh);
   }
   return g;
 }

@@ -76,7 +76,9 @@ button_content (OmarchyButton *self, ButtonContent *c, PangoLayout **icon_out, P
   }
   if (self->label && *self->label) {
     label = omarchy_layout (GTK_WIDGET (self), self->label, t->body, self->selected);
-    omarchy_layout_size (label, &c->label_w, NULL);
+    PangoRectangle logical;
+    pango_layout_get_extents (label, NULL, &logical);
+    c->label_w = (int) ceil (logical.width / (double) PANGO_SCALE - 1e-3);
     c->label_h = omarchy_line_height (t->body);
   }
   c->content_w = (icon ? c->icon_w + (label ? t->control_gap : 0) : 0) + (label ? c->label_w : 0);
@@ -455,23 +457,10 @@ icon_button_snapshot (GtkWidget *w, GtkSnapshot *s)
   omarchy_draw_surface (s, &GRAPHENE_RECT_INIT (0, 0, W, H), omarchy_radius_small (), &fill, &border);
   if (self->icon && *self->icon) {
     g_autoptr (PangoLayout) l = omarchy_layout (w, self->icon, p->icon, FALSE);
-    PangoRectangle ink_rect;
-    pango_layout_get_extents (l, &ink_rect, NULL);
-    float ix = ink_rect.x / (float) PANGO_SCALE;
-    float iy = ink_rect.y / (float) PANGO_SCALE;
-    float iw = ink_rect.width / (float) PANGO_SCALE;
-    float ih = ink_rect.height / (float) PANGO_SCALE;
-    float gx, gy;
-    if (iw > 0 && ih > 0) {
-      gx = roundf (W / 2.0f - (ix + iw / 2.0f));
-      gy = roundf (H / 2.0f - (iy + ih / 2.0f));
-    } else {
-      int gw, gh;
-      int dx = omarchy_glyph_box (l, &gw, &gh);
-      gh = omarchy_line_height (p->icon);
-      gx = roundf ((W - gw) / 2.0f) + dx;
-      gy = roundf ((H - gh) / 2.0f);
-    }
+    double cx = omarchy_ink_center_x (w, self->icon, p->icon, FALSE);
+    int gh = omarchy_line_height (p->icon);
+    float gx = roundf ((float) (W / 2.0 - cx));
+    float gy = roundf ((H - gh) / 2.0f);
     GdkRGBA ink = enabled ? (hot ? *hover : p->foreground) : p->text_faint;
     omarchy_draw_layout (s, l, gx, gy, &ink);
   }

@@ -90,15 +90,15 @@ n_filtered (OmarchyMultiSelect *self)
 static int
 label_h (OmarchyMultiSelect *self)
 {
-  return self->show_label && self->label && *self->label ? omarchy_tokens ()->huge : 0;
+  const OmarchyTokens *t = omarchy_tokens ();
+  return self->show_label && self->label && *self->label ? omarchy_line_height (t->caption) + t->label_gap : 0;
 }
 
 static graphene_rect_t
 trigger_rect (OmarchyMultiSelect *self)
 {
   const OmarchyTokens *t = omarchy_tokens ();
-  int y = self->show_label && self->label && *self->label ? omarchy_line_height (t->caption) + t->label_gap : 0;
-  return GRAPHENE_RECT_INIT (0, y, gtk_widget_get_width (GTK_WIDGET (self)), t->control_height);
+  return GRAPHENE_RECT_INIT (0, label_h (self), gtk_widget_get_width (GTK_WIDGET (self)), t->control_height);
 }
 
 static OmarchyBorder
@@ -145,8 +145,10 @@ static int
 popup_h (OmarchyMultiSelect *self)
 {
   const OmarchyTokens *t = omarchy_tokens ();
-  int ideal = list_content_h (self) + omarchy_space (50);
-  int most = t->popup_row_height * 6 + 5 * t->label_gap + omarchy_space (50);
+  OmarchyBorder b = popup_border ();
+  int chrome = header_h () + 1 + (int) (b.widths[0] + b.widths[2]) + 2 * t->hairline;
+  int ideal = list_content_h (self) + chrome;
+  int most = t->popup_row_height * 6 + 5 * t->label_gap + chrome;
   return MIN (ideal, most);
 }
 
@@ -355,7 +357,7 @@ list_snapshot (GtkWidget *w, GtkSnapshot *s)
   float W = gtk_widget_get_width (w);
   gboolean rtl = gtk_widget_get_direction (w) == GTK_TEXT_DIR_RTL;
   int box = omarchy_space (16), line = omarchy_line_height (p->body), cap = omarchy_line_height (p->caption);
-  float box_r = MAX (2, p->radius / 2.0f);
+  float box_r = omarchy_radius_small ();
   float words_w = MAX (1, W - 2 * p->control_padding_x - box - p->row_gap);
   float y = (float) -list->scroll;
   for (int i = 0; i < n_filtered (self); i++) {
@@ -364,7 +366,7 @@ list_snapshot (GtkWidget *w, GtkSnapshot *s)
     if (y + h >= 0 && y < gtk_widget_get_height (w)) {
       gboolean cur = i == self->current, chosen = value_index (self, o->value) >= 0;
       if (cur)
-        omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (0, y, W, h), 0, &p->hover.fill);
+        omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (0, y, W, h), box_r, &p->hover.fill);
       gboolean desc = o->description && *o->description;
       int words_h = line + (desc ? p->xxs + cap : 0);
       float content_h = MAX (box, words_h);
@@ -515,8 +517,7 @@ pop_snapshot (GtkWidget *w, GtkSnapshot *s)
     int tw;
     omarchy_layout_size (l, &tw, NULL);
     int th = omarchy_line_height (p->body);
-    /* Centered in the list's area, which Qt runs to `xxs` above the popup's bottom edge. */
-    float area_h = H - (g.rule_y + 1) - p->xxs;
+    float area_h = MAX (0.0f, g.list.size.height);
     omarchy_draw_layout (s, l, g.x0 + roundf ((g.cw - tw) / 2), g.rule_y + 1 + roundf ((area_h - th) / 2), &p->text_faint);
   }
   gtk_widget_snapshot_child (w, pop->list, s);
@@ -716,8 +717,7 @@ ms_snapshot (GtkWidget *w, GtkSnapshot *s)
   omarchy_layout_size (chevron, &cw, NULL);
   float cy = r.origin.y + roundf ((r.size.height - line) / 2);
   float cx = rtl ? b->widths[3] + p->control_gap : W - b->widths[1] - p->control_gap - cw;
-  GdkRGBA ink = omarchy_rgba_darker (&p->popups.text, 1.2);
-  omarchy_draw_layout (s, chevron, cx, cy, &ink);
+  omarchy_draw_layout (s, chevron, cx, cy, &p->text_dim);
 
   g_autofree char *chosen = selection_label (self);
   const char *text = chosen ? chosen

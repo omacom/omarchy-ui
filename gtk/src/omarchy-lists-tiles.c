@@ -575,17 +575,18 @@ avatar_snapshot (GtkWidget *w, GtkSnapshot *s)
     gtk_snapshot_restore (s);
   } else {
     omarchy_draw_fill (s, &box, corner, &p->selected.fill);
-    g_autofree char *initial = omarchy_avatar_initial (self->name);
-    const char *mark = self->glyph[0] ? self->glyph : initial;
-    if (*mark) {
-      int mpx = (int) lround (px * 0.5);
-      g_autoptr (PangoLayout) l = omarchy_layout (w, mark, mpx, !self->glyph[0]);
-      int mw;
-      int dx = self->glyph[0] ? omarchy_glyph_box (l, &mw, NULL) : 0;
-      if (!self->glyph[0])
+    int mpx = (int) lround (px * 0.5);
+    if (self->glyph[0]) {
+      omarchy_draw_optical_glyph (w, s, self->glyph, mpx, 0, 0, px, px, &p->foreground);
+    } else {
+      g_autofree char *initial = omarchy_avatar_initial (self->name);
+      if (*initial) {
+        g_autoptr (PangoLayout) l = omarchy_layout (w, initial, mpx, TRUE);
+        int mw;
         omarchy_layout_size (l, &mw, NULL);
-      int mh = omarchy_line_height (mpx);
-      omarchy_draw_layout (s, l, omarchy_lists_center (px, mw) + dx, omarchy_lists_center (px, mh), &p->foreground);
+        int mh = omarchy_line_height (mpx);
+        omarchy_draw_layout (s, l, omarchy_lists_center (px, mw), omarchy_lists_center (px, mh), &p->foreground);
+      }
     }
   }
   if (self->status[0]) {
@@ -932,6 +933,36 @@ grid_measure (GtkWidget *w, GtkOrientation o, int for_size, int *min, int *nat, 
   *min = *nat = o == GTK_ORIENTATION_HORIZONTAL ? (OMARCHY_TILE_GRID (w)->tiles->len ? g.cols * g.cell_w : 0) : g.rows * g.cell_h;
 }
 
+/* Build a tile's label layout and return the y offset that vertically centers (iconBox + md + label)
+ * inside `cell_h`. */
+static float
+tile_content_y (OmarchyTileGrid *self, const GridGeom *g, const Tile *tile, PangoLayout **layout_out)
+{
+  const OmarchyTokens *t = omarchy_tokens ();
+  int lw = MAX (0, g->cell_w - g->pad * 2);
+  PangoLayout *l = omarchy_layout (GTK_WIDGET (self), tile->label, t->body_small, FALSE);
+  pango_layout_set_width (l, lw * PANGO_SCALE);
+  pango_layout_set_wrap (l, PANGO_WRAP_WORD_CHAR);
+  pango_layout_set_height (l, -2);
+  pango_layout_set_ellipsize (l, PANGO_ELLIPSIZE_END);
+  pango_layout_set_alignment (l, PANGO_ALIGN_CENTER);
+  int lines = pango_layout_get_line_count (l);
+  int lh;
+  if (lines <= 1) {
+    lh = omarchy_line_height (t->body_small);
+  } else {
+    PangoRectangle logical;
+    pango_layout_get_extents (l, NULL, &logical);
+    lh = (int) ceil (logical.height / (double) PANGO_SCALE);
+  }
+  int content_h = g->icon_h + g->gap + lh;
+  if (layout_out)
+    *layout_out = l;
+  else
+    g_object_unref (l);
+  return roundf ((g->cell_h - content_h) / 2.0f);
+}
+
 static void
 grid_allocate (GtkWidget *w, int width, int height, int baseline)
 {
@@ -943,11 +974,12 @@ grid_allocate (GtkWidget *w, int width, int height, int baseline)
     if (!tile->avatar)
       continue;
     graphene_rect_t r = grid_cell (self, &g, i);
+    float cy = tile_content_y (self, &g, tile, NULL);
     int aw, ah;
     gtk_widget_measure (tile->avatar, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &aw, NULL, NULL);
     gtk_widget_measure (tile->avatar, GTK_ORIENTATION_VERTICAL, -1, NULL, &ah, NULL, NULL);
     GtkAllocation a = { (int) (r.origin.x + omarchy_lists_center (g.cell_w, aw)),
-                        (int) (r.origin.y + g.pad + omarchy_lists_center (g.icon_h, ah)), aw, ah };
+                        (int) (r.origin.y + cy + omarchy_lists_center (g.icon_h, ah)), aw, ah };
     gtk_widget_size_allocate (tile->avatar, &a, -1);
   }
 }
@@ -966,19 +998,14 @@ grid_snapshot (GtkWidget *w, GtkSnapshot *s)
       omarchy_draw_surface (s, &r, p->radius, &p->hover.fill, &p->hover.border);
     else if (self->current_index == (int) i)
       omarchy_draw_surface (s, &r, p->radius, &p->selected.fill, &p->selected.border);
+    g_autoptr (PangoLayout) l = NULL;
+    float cy = tile_content_y (self, &g, tile, &l);
     if (!tile->avatar)
-      omarchy_lists_draw_glyph (s, w, tile->glyph, p->display, r.origin.x, r.origin.y + g.pad, g.cell_w, g.icon_h,
-                                &p->foreground);
+      omarchy_draw_optical_glyph (w, s, tile->glyph, p->display, r.origin.x + g.pad, r.origin.y + cy,
+                                  MAX (0, g.cell_w - g.pad * 2), g.icon_h, &p->foreground);
     else
       gtk_widget_snapshot_child (w, tile->avatar, s);
-    int lw = MAX (0, g.cell_w - g.pad * 2);
-    g_autoptr (PangoLayout) l = omarchy_layout (w, tile->label, p->body_small, FALSE);
-    pango_layout_set_width (l, lw * PANGO_SCALE);
-    pango_layout_set_wrap (l, PANGO_WRAP_WORD_CHAR);
-    pango_layout_set_height (l, -2);
-    pango_layout_set_ellipsize (l, PANGO_ELLIPSIZE_END);
-    pango_layout_set_alignment (l, PANGO_ALIGN_CENTER);
-    omarchy_draw_layout (s, l, r.origin.x + g.pad, r.origin.y + g.pad + g.icon_h + g.gap, &p->foreground);
+    omarchy_draw_layout (s, l, r.origin.x + g.pad, r.origin.y + cy + g.icon_h + g.gap, &p->foreground);
   }
 }
 

@@ -318,7 +318,7 @@ static int
 number_label_h (OmarchyNumberField *self)
 {
   const OmarchyTokens *t = omarchy_tokens ();
-  return self->label && *self->label ? omarchy_line_height (t->body_small) + t->md : 0;
+  return self->label && *self->label ? omarchy_line_height (t->caption) + t->label_gap : 0;
 }
 
 static int
@@ -388,7 +388,7 @@ number_measure (GtkWidget *w, GtkOrientation o, int for_size, int *min, int *nat
   if (o == GTK_ORIENTATION_HORIZONTAL) {
     int lw = 0;
     if (self->label && *self->label) {
-      g_autoptr (PangoLayout) l = omarchy_layout (w, self->label, t->body_small, FALSE);
+      g_autoptr (PangoLayout) l = omarchy_layout (w, self->label, t->caption, TRUE);
       omarchy_layout_size (l, &lw, NULL);
     }
     *min = *nat = MAX (t->number_field_width, lw);
@@ -401,14 +401,15 @@ static void
 number_allocate (GtkWidget *w, int width, int height, int baseline)
 {
   OmarchyNumberField *self = OMARCHY_NUMBER_FIELD (w);
+  const OmarchyTokens *t = omarchy_tokens ();
   graphene_rect_t spin, down, up;
   number_spin_rect (self, &spin);
   number_part_rect (self, -1, &down);
   number_part_rect (self, 1, &up);
   int ch;
   gtk_widget_measure (self->text, GTK_ORIENTATION_VERTICAL, -1, NULL, &ch, NULL, NULL);
-  float left = MIN (down.origin.x, up.origin.x) + down.size.width;
-  float right = MAX (down.origin.x, up.origin.x);
+  float left = MIN (down.origin.x, up.origin.x) + down.size.width + t->sm;
+  float right = MAX (down.origin.x, up.origin.x) - t->sm;
   GtkAllocation a = { (int) left, (int) (spin.origin.y + (spin.size.height - ch) / 2), MAX (0, (int) (right - left)), ch };
   gtk_widget_size_allocate (self->text, &a, -1);
 }
@@ -419,7 +420,7 @@ number_snapshot (GtkWidget *w, GtkSnapshot *s)
   OmarchyNumberField *self = OMARCHY_NUMBER_FIELD (w);
   const OmarchyTokens *p = omarchy_paint ();
   if (self->label && *self->label) {
-    g_autoptr (PangoLayout) l = omarchy_layout (w, self->label, p->body_small, FALSE);
+    g_autoptr (PangoLayout) l = omarchy_layout (w, self->label, p->caption, TRUE);
     int lw;
     omarchy_layout_size (l, &lw, NULL);
     gboolean rtl = gtk_widget_get_direction (w) == GTK_TEXT_DIR_RTL;
@@ -431,14 +432,15 @@ number_snapshot (GtkWidget *w, GtkSnapshot *s)
   const OmarchyBorder *border;
   field_look (w, self->cursor, &fill, &border);
   omarchy_draw_surface (s, &spin, p->radius, fill, border);
+  float part_r = MAX (0.0f, p->radius - p->normal.border.widths[0]);
   for (int part = -1; part <= 1; part += 2) {
     graphene_rect_t r;
     number_part_rect (self, part, &r);
     gboolean enabled = part < 0 ? self->value > self->from : self->value < self->to;
     if (enabled && self->pressed_part == part)
-      omarchy_draw_fill (s, &r, MIN (4, p->radius), &p->pressed);
+      omarchy_draw_fill (s, &r, part_r, &p->pressed);
     else if (enabled && self->hover_part == part)
-      omarchy_draw_fill (s, &r, MIN (4, p->radius), &p->hover.fill);
+      omarchy_draw_fill (s, &r, part_r, &p->hover.fill);
     g_autoptr (PangoLayout) g = omarchy_layout (w, part < 0 ? "\xe2\x88\x92" : "+", p->body, FALSE);
     int gw;
     omarchy_layout_size (g, &gw, NULL);
@@ -738,15 +740,15 @@ dropdown_popup_border (void)
 static int
 dropdown_label_h (OmarchyDropdown *self)
 {
-  return self->label && *self->label ? omarchy_tokens ()->huge : 0;
+  const OmarchyTokens *t = omarchy_tokens ();
+  return self->label && *self->label ? omarchy_line_height (t->caption) + t->label_gap : 0;
 }
 
 static void
 dropdown_trigger_rect (OmarchyDropdown *self, graphene_rect_t *r)
 {
   const OmarchyTokens *t = omarchy_tokens ();
-  int label_h = self->label && *self->label ? omarchy_line_height (t->caption) + t->label_gap : 0;
-  *r = GRAPHENE_RECT_INIT (0, label_h, gtk_widget_get_width (GTK_WIDGET (self)), t->control_height);
+  *r = GRAPHENE_RECT_INIT (0, dropdown_label_h (self), gtk_widget_get_width (GTK_WIDGET (self)), t->control_height);
 }
 
 static const char *
@@ -892,7 +894,7 @@ list_snapshot (GtkWidget *w, GtkSnapshot *s)
     float y = list_row_y ((int) i);
     gboolean cur = (int) i == owner->current;
     if (cur)
-      omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (x0, y, x1 - x0, p->popup_row_height), 0, &p->hover.fill);
+      omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (x0, y, x1 - x0, p->popup_row_height), omarchy_radius_small (), &p->hover.fill);
     g_autoptr (PangoLayout) l = omarchy_layout (w, g_ptr_array_index (owner->labels, i), p->body, FALSE);
     pango_layout_set_width (l, (int) ((x1 - x0 - 2 * p->control_padding_x) * PANGO_SCALE));
     pango_layout_set_ellipsize (l, PANGO_ELLIPSIZE_END);

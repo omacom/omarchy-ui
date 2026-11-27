@@ -1168,9 +1168,10 @@ tabs_snapshot (GtkWidget *wd, GtkSnapshot *s)
   const OmarchyTokens *p = omarchy_paint ();
   float W = gtk_widget_get_width (wd), H = gtk_widget_get_height (wd);
   int n = (int) self->labels->len;
-  gtk_snapshot_append_color (s, &p->track, &GRAPHENE_RECT_INIT (0, H - 1, W, 1));
-  if (n == 0)
+  if (n == 0) {
+    gtk_snapshot_append_color (s, &p->track, &GRAPHENE_RECT_INIT (0, H - 1, W, 1));
     return;
+  }
   int *x = g_newa (int, n), *w = g_newa (int, n);
   tabs_geometry (self, x, w);
   int th = tabs_height (), line = omarchy_line_height (p->body);
@@ -1189,6 +1190,7 @@ tabs_snapshot (GtkWidget *wd, GtkSnapshot *s)
     const GdkRGBA *c = selected ? &p->selected.text : hot ? &p->foreground : &p->text_dim;
     omarchy_draw_layout (s, l, x[i] + omarchy_nav_center (w[i], tw), omarchy_nav_center (th, line), c);
   }
+  gtk_snapshot_append_color (s, &p->track, &GRAPHENE_RECT_INIT (0, H - 1, W, 1));
   if (self->current >= 0 && self->current < n) {
     /* The underline, between the tabs it slides from and to. */
     double v = CLAMP (self->underline.set ? self->underline.value : self->current, 0, n - 1);

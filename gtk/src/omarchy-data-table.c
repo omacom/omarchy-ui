@@ -192,7 +192,8 @@ table_snapshot (GtkWidget *w, GtkSnapshot *s)
       continue;
     char **cells = g_ptr_array_index (self->rows, r);
     gboolean selected = self->selected_row == r;
-    data_row_fill (s, 0, y, W, rh, show && self->cursor_row == r, selected);
+    gboolean cursor = show && self->cursor_row == r;
+    data_row_fill (s, 0, y, W, rh, cursor, selected);
     const GdkRGBA *ink = selected ? &p->selected.text : &p->foreground;
     float by = data_center_y (y, rh, p->body);
     guint n_cells = cells ? g_strv_length (cells) : 0;
@@ -210,7 +211,8 @@ table_snapshot (GtkWidget *w, GtkSnapshot *s)
       }
       cx += cw;
     }
-    if (self->separators && r < n_rows - 1)
+    gboolean next_hi = self->selected_row == r + 1 || (show && self->cursor_row == r + 1);
+    if (self->separators && r < n_rows - 1 && !selected && !cursor && !next_hi)
       gtk_snapshot_append_color (s, &p->track, &GRAPHENE_RECT_INIT (0, y + rh - hair, W, hair));
   }
   gtk_snapshot_restore (s);
@@ -779,15 +781,13 @@ tree_snapshot (GtkWidget *w, GtkSnapshot *s)
     int slot = tree_slot_x (p, r->depth);
     if (r->node->children->len > 0) {
       const char *chevron = r->open ? GLYPH_EXPANDED : GLYPH_COLLAPSED;
-      int gw = data_glyph_width (w, chevron, p->icon_small);
-      data_draw_glyph (w, s, chevron, p->icon_small, W, slot + roundf ((p->xxxl - gw) / 2.0f),
-                       data_center_y (y, rh, p->icon_small), &p->text_dim);
+      data_draw_optical_glyph (w, s, chevron, p->icon_small, W, slot, y, p->xxxl, rh, &p->text_dim);
     }
     float gx = slot + p->xxxl + p->sm;
     gboolean has_glyph = r->node->glyph && *r->node->glyph;
     if (has_glyph)
-      data_draw_glyph (w, s, r->node->glyph, p->icon, W, gx, data_center_y (y, rh, p->icon),
-                       selected ? &p->selected.text : &p->text_dim);
+      data_draw_optical_glyph (w, s, r->node->glyph, p->icon, W, gx, y, p->icon, rh,
+                               selected ? &p->selected.text : &p->text_dim);
     float lx = gx + (has_glyph ? p->icon + p->md : 0);
     g_autoptr (PangoLayout) l = data_text (w, r->node->label, p->body, selected, MAX (0, (int) (W - lx - p->md)));
     data_draw_text (w, s, l, W, lx, data_center_y (y, rh, p->body), selected ? &p->selected.text : &p->foreground);

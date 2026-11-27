@@ -576,7 +576,8 @@ row_measure (GtkWidget *w, GtkOrientation o, int for_size, int *min, int *nat, i
     /* Unconstrained, the description takes one line: a parent laying rows out across measures
      * them at their real width (GTK asks for width-for-height below this). */
     int width = for_size >= 0 ? for_size : G_MAXINT / 4;
-    *min = *nat = MAX (MAX (t->control_height, row_words_height (self, row_words_width (self, width))), th) + t->md * 2;
+    int wh = row_words_height (self, row_words_width (self, width));
+    *min = *nat = MAX (MAX (t->control_height + t->md * 2, wh + t->md * 2), th + t->xxs * 2);
   }
 }
 

@@ -784,13 +784,11 @@ typedef struct {
 static void
 hero_geom (OmarchyHero *self, HeroGeom *g)
 {
-  GtkWidget *w = GTK_WIDGET (self);
   const OmarchyTokens *t = omarchy_tokens ();
   memset (g, 0, sizeof *g);
-  if (self->glyph[0])
-    omarchy_lists_glyph_size (w, self->glyph, t->display, &g->glyph_w, NULL);
-  g->glyph_h = omarchy_line_height (t->display);
-  g->gap = omarchy_space (14);
+  g->glyph_w = self->glyph[0] ? t->display : 0;
+  g->glyph_h = MAX (t->display_large, (int) ceil (t->display * 1.35));
+  g->gap = self->glyph[0] ? omarchy_space (14) : 0;
   g->labels_x = g->glyph_w + g->gap;
   g->title_h = omarchy_line_height (t->title);
   g->status_h = self->status[0] ? omarchy_line_height (t->caption) : 0;
@@ -852,8 +850,8 @@ hero_snapshot (GtkWidget *w, GtkSnapshot *s)
   hero_geom (self, &g);
   if (self->glyph[0]) {
     gtk_snapshot_push_opacity (s, CLAMP (self->glyph_opacity, 0, 1));
-    omarchy_lists_draw_glyph_at (s, w, self->glyph, p->display, hero_x (w, 0, g.glyph_w), omarchy_lists_center (H, g.glyph_h),
-                                 &p->foreground);
+    omarchy_draw_optical_glyph (w, s, self->glyph, p->display, hero_x (w, 0, g.glyph_w),
+                                omarchy_lists_center (H, g.glyph_h), g.glyph_w, g.glyph_h, &p->foreground);
     gtk_snapshot_pop (s);
   }
   int lw = MAX (0, (int) floorf (W - g.labels_x - g.inset));

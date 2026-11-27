@@ -203,7 +203,8 @@ row_geom (OmarchyListRow *self, int width, RowGeom *g)
     gtk_widget_measure (self->leading, GTK_ORIENTATION_VERTICAL, g->leading_w, NULL, &g->leading_h, NULL, NULL);
     g->lead_h = g->leading_h;
   } else if (self->glyph[0]) {
-    g->lead_h = omarchy_line_height (self->glyph_size > 0 ? self->glyph_size : t->title);
+    int gpx = self->glyph_size > 0 ? self->glyph_size : t->title;
+    g->lead_h = MAX (t->icon_large, (int) ceil (gpx * 1.35));
   }
 
   g->line_gap = omarchy_space (1);
@@ -383,15 +384,13 @@ row_snapshot (GtkWidget *w, GtkSnapshot *s)
   const GdkRGBA *title_c = self->disabled ? &faint : &p->foreground;
   const GdkRGBA *dim_c = self->disabled ? &faint : &p->text_dim;
 
-  /* Leading glyph, centered in its slot by its box. */
+  /* Leading glyph, centered optically in its iconLarge slot. */
   if (!child_shown (self->leading) && self->glyph[0]) {
     int px = self->glyph_size > 0 ? self->glyph_size : p->title;
     GdkRGBA c = self->disabled ? faint : (self->has_glyph_color ? self->glyph_color : p->foreground);
-    int gw;
-    omarchy_lists_glyph_size (w, self->glyph, px, &gw, NULL);
     float lead_y = by + omarchy_lists_center (g.body_h, g.lead_h);
-    float gx = roundf ((p->icon_large - gw) / 2.0f);
-    omarchy_lists_draw_glyph_at (s, w, self->glyph, px, row_x (w, &g, gx, gw), lead_y + omarchy_lists_center (g.lead_h, g.lead_h), &c);
+    omarchy_draw_optical_glyph (w, s, self->glyph, px, row_x (w, &g, 0, p->icon_large), lead_y, p->icon_large,
+                                g.lead_h, &c);
   }
 
   /* Info column. */
@@ -442,11 +441,12 @@ row_snapshot (GtkWidget *w, GtkSnapshot *s)
     }
     if (omarchy_list_row_get_action_shown (self)) {
       GdkRGBA c = self->action_urgent ? p->urgent : p->text_dim;
-      omarchy_lists_draw_glyph (s, w, self->action_glyph, p->subtitle, r.origin.x, r.origin.y, r.size.width, r.size.height, &c);
+      omarchy_draw_optical_glyph (w, s, self->action_glyph, p->subtitle, r.origin.x, r.origin.y, r.size.width,
+                                  r.size.height, &c);
     } else if (self->trailing_glyph[0]) {
       GdkRGBA c = self->disabled ? faint : omarchy_lists_tone (self->trailing_tone, &p->text_dim);
-      omarchy_lists_draw_glyph (s, w, self->trailing_glyph, p->subtitle, r.origin.x, r.origin.y, r.size.width, r.size.height,
-                                &c);
+      omarchy_draw_optical_glyph (w, s, self->trailing_glyph, p->subtitle, r.origin.x, r.origin.y, r.size.width,
+                                  r.size.height, &c);
     }
   }
 
