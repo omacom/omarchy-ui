@@ -438,7 +438,7 @@ row_snapshot (GtkWidget *w, GtkSnapshot *s)
       GdkRGBA fill = omarchy_rgba_alpha (&ink, p->hover.fill.alpha);
       GdkRGBA bc = omarchy_rgba_alpha (&ink, p->hover.border.color.alpha);
       OmarchyBorder b = omarchy_border_flat (&bc, omarchy_border_max (&p->hover.border));
-      omarchy_draw_surface (s, &r, p->radius, &fill, &b);
+      omarchy_draw_surface (s, &r, omarchy_radius_small (), &fill, &b);
     }
     if (omarchy_list_row_get_action_shown (self)) {
       GdkRGBA c = self->action_urgent ? p->urgent : p->text_dim;

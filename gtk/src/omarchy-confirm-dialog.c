@@ -129,7 +129,7 @@ snapshot (GtkWidget *w, GtkSnapshot *s)
     GdkRGBA bc = destructive ? (sel ? p->urgent : omarchy_rgba_alpha (&p->urgent, 0.56))
                              : (sel ? p->accent : omarchy_rgba_alpha (&p->foreground, 0.38));
     OmarchyBorder b = omarchy_border_flat (&bc, p->normal.border.widths[0]);
-    omarchy_draw_surface (s, &g.buttons[i], 0, &fill, &b);
+    omarchy_draw_surface (s, &g.buttons[i], p->radius, &fill, &b);
     GdkRGBA ink = destructive ? (sel ? p->urgent : p->foreground) : (sel ? p->accent : p->foreground);
     g_autoptr (PangoLayout) bl = omarchy_layout (w, i == 0 ? cancel_text (self) : confirm_text (self), p->caption, FALSE);
     int tw;

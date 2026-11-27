@@ -1144,6 +1144,24 @@ tabs_measure (GtkWidget *wd, GtkOrientation o, int for_size, int *min, int *nat,
 }
 
 static void
+tabs_draw_fill (GtkSnapshot *s, const graphene_rect_t *r, float radius, const GdkRGBA *c)
+{
+  if (c->alpha <= 0 || r->size.width <= 0 || r->size.height <= 0)
+    return;
+  float rad = CLAMP (radius, 0, MIN (r->size.width, r->size.height) / 2);
+  if (rad <= 0) {
+    gtk_snapshot_append_color (s, c, r);
+    return;
+  }
+  const graphene_size_t top = { rad, rad }, flat = { 0, 0 };
+  GskRoundedRect rr;
+  gsk_rounded_rect_init (&rr, r, &top, &top, &flat, &flat);
+  gtk_snapshot_push_rounded_clip (s, &rr);
+  gtk_snapshot_append_color (s, c, r);
+  gtk_snapshot_pop (s);
+}
+
+static void
 tabs_snapshot (GtkWidget *wd, GtkSnapshot *s)
 {
   OmarchyTabs *self = OMARCHY_TABS (wd);
@@ -1156,15 +1174,16 @@ tabs_snapshot (GtkWidget *wd, GtkSnapshot *s)
   int *x = g_newa (int, n), *w = g_newa (int, n);
   tabs_geometry (self, x, w);
   int th = tabs_height (), line = omarchy_line_height (p->body);
+  float r_small = omarchy_radius_small ();
   gboolean focus = omarchy_widget_focus_shown (wd), pressed = omarchy_widget_pressed (wd);
   for (int i = 0; i < n; i++) {
     gboolean selected = i == self->current;
     gboolean hot = i == self->hover || i == self->cursor || (focus && selected);
     graphene_rect_t r = GRAPHENE_RECT_INIT (x[i], 0, w[i], th);
     if (pressed && i == self->hover)
-      omarchy_draw_fill (s, &r, MIN (4, p->radius), &p->pressed);
+      tabs_draw_fill (s, &r, r_small, &p->pressed);
     else if (hot)
-      omarchy_draw_fill (s, &r, MIN (4, p->radius), &p->hover.fill);
+      tabs_draw_fill (s, &r, r_small, &p->hover.fill);
     g_autoptr (PangoLayout) l = omarchy_layout (wd, g_ptr_array_index (self->labels, i), p->body, selected);
     float tw = (float) omarchy_nav_text_advance (wd, g_ptr_array_index (self->labels, i), p->body, selected);
     const GdkRGBA *c = selected ? &p->selected.text : hot ? &p->foreground : &p->text_dim;

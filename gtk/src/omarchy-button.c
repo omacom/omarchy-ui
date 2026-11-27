@@ -80,7 +80,7 @@ button_content (OmarchyButton *self, ButtonContent *c, PangoLayout **icon_out, P
     c->label_h = omarchy_line_height (t->body);
   }
   c->content_w = (icon ? c->icon_w + (label ? t->control_gap : 0) : 0) + (label ? c->label_w : 0);
-  c->row_h = MAX (c->icon_h, c->label_h);
+  c->row_h = label ? c->label_h : c->icon_h;
   if (icon_out)
     *icon_out = icon;
   else if (icon)
@@ -171,17 +171,17 @@ button_snapshot (GtkWidget *w, GtkSnapshot *s)
   if (rtl && !self->left_align) {
     /* Mirrored: the label first, then the glyph. */
     if (label)
-      omarchy_draw_layout (s, label, x, roundf (row_y + (c.row_h - c.label_h) / 2), &ink);
+      omarchy_draw_layout (s, label, x, roundf (row_y + (c.row_h - c.label_h) / 2.0f), &ink);
     if (icon)
       omarchy_draw_layout (s, icon, x + (label ? c.label_w + p->control_gap : 0) + c.icon_x,
-                           roundf (row_y + (c.row_h - c.icon_h) / 2), &ink);
+                           roundf (row_y + (c.row_h - c.icon_h) / 2.0f), &ink);
   } else {
     if (icon) {
-      omarchy_draw_layout (s, icon, x + c.icon_x, roundf (row_y + (c.row_h - c.icon_h) / 2), &ink);
+      omarchy_draw_layout (s, icon, x + c.icon_x, roundf (row_y + (c.row_h - c.icon_h) / 2.0f), &ink);
       x += c.icon_w + (label ? p->control_gap : 0);
     }
     if (label)
-      omarchy_draw_layout (s, label, x, roundf (row_y + (c.row_h - c.label_h) / 2), &ink);
+      omarchy_draw_layout (s, label, x, roundf (row_y + (c.row_h - c.label_h) / 2.0f), &ink);
   }
   g_clear_object (&icon);
   g_clear_object (&label);
@@ -452,14 +452,28 @@ icon_button_snapshot (GtkWidget *w, GtkSnapshot *s)
     border = p->focus.border;
   else if (hot && self->bordered && !self->destructive)
     border = p->hover.border;
-  omarchy_draw_surface (s, &GRAPHENE_RECT_INIT (0, 0, W, H), p->radius, &fill, &border);
+  omarchy_draw_surface (s, &GRAPHENE_RECT_INIT (0, 0, W, H), omarchy_radius_small (), &fill, &border);
   if (self->icon && *self->icon) {
     g_autoptr (PangoLayout) l = omarchy_layout (w, self->icon, p->icon, FALSE);
-    int gw, gh;
-    int dx = omarchy_glyph_box (l, &gw, &gh);
-    gh = omarchy_line_height (p->icon);
+    PangoRectangle ink_rect;
+    pango_layout_get_extents (l, &ink_rect, NULL);
+    float ix = ink_rect.x / (float) PANGO_SCALE;
+    float iy = ink_rect.y / (float) PANGO_SCALE;
+    float iw = ink_rect.width / (float) PANGO_SCALE;
+    float ih = ink_rect.height / (float) PANGO_SCALE;
+    float gx, gy;
+    if (iw > 0 && ih > 0) {
+      gx = roundf (W / 2.0f - (ix + iw / 2.0f));
+      gy = roundf (H / 2.0f - (iy + ih / 2.0f));
+    } else {
+      int gw, gh;
+      int dx = omarchy_glyph_box (l, &gw, &gh);
+      gh = omarchy_line_height (p->icon);
+      gx = roundf ((W - gw) / 2.0f) + dx;
+      gy = roundf ((H - gh) / 2.0f);
+    }
     GdkRGBA ink = enabled ? (hot ? *hover : p->foreground) : p->text_faint;
-    omarchy_draw_layout (s, l, roundf ((W - gw) / 2) + dx, roundf ((H - gh) / 2), &ink);
+    omarchy_draw_layout (s, l, gx, gy, &ink);
   }
 }
 

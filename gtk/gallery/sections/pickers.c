@@ -1,7 +1,7 @@
 /* pickers: MultiSelect "Bar modules" with four of five chosen ("4 selected"); `xxl` beside it,
  * in a 280-tall box, MultiSelect "Notify for" held open with Mail and Updates. Then ColorWells
  * (accent, success with the cursor, urgent), a SwatchStrip of eight palette colors with warning
- * chosen, and a 420 × 200 box: a Card "Displays" under an open destructive Dialog.
+ * chosen, and a 420 × 240 box: a Card "Displays" under an open destructive Dialog.
  * (qt/gallery/sections/pickers.qml) */
 #include "gallery.h"
 
@@ -67,7 +67,7 @@ gallery_section_pickers (void)
   gtk_box_append (GTK_BOX (rows), menu_row ("Built-in display", TRUE));
   gtk_box_append (GTK_BOX (rows), menu_row ("External monitor", FALSE));
   gtk_box_append (GTK_BOX (rows), menu_row ("Projector", FALSE));
-  /* The rows run on under the dialog, past the 200-tall box, as Qt's do: let the card be
+  /* The rows run on under the dialog, past the 240-tall box, as Qt's do: let the card be
    * shorter than they are. */
   GtkWidget *clip = gtk_scrolled_window_new ();
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (clip), GTK_POLICY_NEVER, GTK_POLICY_EXTERNAL);
@@ -82,6 +82,6 @@ gallery_section_pickers (void)
   omarchy_dialog_set_opened (OMARCHY_DIALOG (dialog), TRUE);
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), dialog);
   gtk_overlay_set_clip_overlay (GTK_OVERLAY (overlay), dialog, TRUE);
-  gallery_add (section, gallery_size (overlay, 420, 200));
+  gallery_add (section, gallery_size (overlay, 420, 240));
   return section;
 }

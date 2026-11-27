@@ -97,9 +97,9 @@ snapshot (GtkWidget *w, GtkSnapshot *s)
   graphene_rect_t fill = GRAPHENE_RECT_INIT (rtl ? g.track_x + g.track_w - fill_w : g.track_x, ty, fill_w, g.track_h);
   omarchy_draw_fill (s, &fill, g.track_h / 2.0f, &p->foreground);
   const GdkRGBA *bg = surface_bg (self, p);
-  if (self->ticks > 1) {
+  if (self->ticks > 2) {
     float tw = MAX (1, omarchy_space (2)), th = g.track_h + omarchy_space (4);
-    for (int i = 0; i < self->ticks; i++) {
+    for (int i = 1; i < self->ticks - 1; i++) {
       double f = (double) i / (self->ticks - 1);
       float x = (float) (g.track_x + g.track_w * (rtl ? 1 - f : f) - tw / 2);
       omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (x, g.cy - th / 2, tw, th), 1, bg);

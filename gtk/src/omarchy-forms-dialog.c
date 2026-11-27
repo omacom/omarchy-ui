@@ -188,7 +188,7 @@ dialog_snapshot (GtkWidget *w, GtkSnapshot *s)
     GdkRGBA bc = urgent ? (sel ? p->urgent : omarchy_rgba_alpha (&p->urgent, 0.56))
                         : (sel ? p->menu_selected_text : omarchy_rgba_alpha (&p->foreground, 0.38));
     OmarchyBorder b = omarchy_border_flat (&bc, bw);
-    omarchy_draw_surface (s, &g.buttons[i], 0, &fill, &b);
+    omarchy_draw_surface (s, &g.buttons[i], p->radius, &fill, &b);
     const GdkRGBA *ink = urgent ? (sel ? &p->urgent : &p->foreground) : (sel ? &p->menu_selected_text : &p->foreground);
     g_autoptr (PangoLayout) bl = omarchy_layout (w, i == 0 ? secondary_text (self) : primary_text (self), p->caption, FALSE);
     int tw;

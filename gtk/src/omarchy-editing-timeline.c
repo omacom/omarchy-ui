@@ -285,13 +285,14 @@ tl_snapshot (GtkWidget *w, GtkSnapshot *s)
       const OmarchyBorder *b = selected ? &sel : hover ? &p->hover.border : &p->normal.border;
       const GdkRGBA *fill = selected ? &p->selected.fill : hover ? &p->hover.fill : &p->normal.fill;
       omarchy_draw_surface (s, &r, g.small, fill, b);
-      int avail = (int) r.size.width - t->control_padding_x * 2;
+      int label_inset = selected ? omarchy_space (8) + t->md : t->control_padding_x;
+      int avail = (int) r.size.width - label_inset * 2;
       if (c->label && *c->label && avail > 0) {
         g_autoptr (PangoLayout) l = omarchy_layout (w, c->label, t->body_small, selected);
         pango_layout_set_width (l, avail * PANGO_SCALE);
         pango_layout_set_ellipsize (l, PANGO_ELLIPSIZE_END);
         gtk_snapshot_push_clip (s, &r);
-        omarchy_draw_layout (s, l, r.origin.x + t->control_padding_x, r.origin.y + (r.size.height - line) / 2.0f,
+        omarchy_draw_layout (s, l, r.origin.x + label_inset, r.origin.y + (r.size.height - line) / 2.0f,
                              &p->foreground);
         gtk_snapshot_pop (s);
       }

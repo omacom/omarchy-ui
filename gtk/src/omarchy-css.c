@@ -86,12 +86,10 @@ colors_css (const OmarchyTokens *t)
   var (o, "om-menu-selected-fg", &t->menu_selected_text);
   var (o, "om-menu-scrim", &t->menu_scrim);
   /* Derived, as the Qt kit derives them. */
-  GdkRGBA knob = omarchy_rgba_darker (&t->foreground, 1.25);
-  var (o, "om-knob-off", &knob);
+  var (o, "om-knob-off", &t->text_dim);
   GdkRGBA label = omarchy_rgba_darker (&t->foreground, 1.4);
   var (o, "om-fg-darker-14", &label);
-  GdkRGBA chevron = omarchy_rgba_darker (&t->foreground, 1.2);
-  var (o, "om-fg-darker-12", &chevron);
+  var (o, "om-fg-darker-12", &t->text_dim);
   var_alpha (o, "om-urgent-fill", &t->urgent, 0.22);
   var_alpha (o, "om-urgent-border", &t->urgent, 0.56);
   var_alpha (o, "om-fg-rule", &t->foreground, 0.10);

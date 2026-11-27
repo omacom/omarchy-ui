@@ -808,8 +808,7 @@ dropdown_snapshot (GtkWidget *w, GtkSnapshot *s)
   omarchy_layout_size (chevron, &cw, NULL);
   float cy = r.origin.y + roundf ((r.size.height - line) / 2);
   float cx = rtl ? b->widths[3] + p->control_gap : W - b->widths[1] - p->control_gap - cw;
-  GdkRGBA ink = omarchy_rgba_darker (&p->foreground, 1.2);
-  omarchy_draw_layout (s, chevron, cx, cy, &ink);
+  omarchy_draw_layout (s, chevron, cx, cy, &p->text_dim);
 
   g_autoptr (PangoLayout) text = omarchy_layout (w, dropdown_current_label (self), p->body, FALSE);
   float left = b->widths[3] + p->control_padding_x;
