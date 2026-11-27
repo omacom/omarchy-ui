@@ -139,7 +139,7 @@ var sizes = []struct {
 }{
 	{"buttons", 7}, {"toggles", 11}, {"inputs", 8}, {"slider", 7}, {"surfaces", 34}, {"lists", 25},
 	{"tiles", 25}, {"progress", 12}, {"messages", 26}, {"menus", 26}, {"navigation", 15},
-	{"forms", 24}, {"pickers", 34}, {"data", 12}, {"layout", 27}, {"timeline", 26}, {"color", 20},
+	{"forms", 26}, {"pickers", 34}, {"data", 12}, {"layout", 27}, {"timeline", 26}, {"color", 20},
 	{"composed", 37}, {"tokens", 18},
 }
 

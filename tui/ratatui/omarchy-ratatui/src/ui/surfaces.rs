@@ -208,7 +208,7 @@ impl Draw for Pane {
         let c = &t.shown().controls;
         let (l, tp, r, b) = self.edge();
         if self.bordered {
-            fill(t, buf, area, c.normal.fill);
+            fill(t, buf, paint::inset(area, 1, 1), c.normal.fill);
             frame(t, buf, area, c.normal.border.color, None);
         } else {
             match self.divider {
@@ -311,27 +311,39 @@ impl Head<'_> {
         self.trailing.iter().map(|d| d.size(t).0).sum::<u16>() + n.saturating_sub(1) + if n > 0 { 1 } else { 0 }
     }
     fn size(&self, t: &Theme) -> (u16, u16) {
-        let lines = width(self.text).max(width(self.subtitle));
+        let tw = self.trailing_w(t);
         let trail_h = self.trailing.iter().map(|d| d.size(t).1).max().unwrap_or(0);
-        let h = (if self.subtitle.is_empty() { 1 } else { 2 }).max(trail_h);
-        (self.width.unwrap_or(lines + self.trailing_w(t)), h)
+        let lines_h = if self.subtitle.is_empty() { 1 } else { 2 };
+        let h = lines_h.max(trail_h);
+        let natural = if trail_h > 1 || self.centered {
+            width(self.text).max(width(self.subtitle)) + tw
+        } else {
+            (width(self.text) + tw).max(width(self.subtitle))
+        };
+        (self.width.unwrap_or(natural), h)
     }
     fn draw(&self, t: &Theme, area: Rect, buf: &mut Buffer) {
         let tw = self.trailing_w(t);
-        let lines_w = area.width.saturating_sub(tw);
-        let put_line = |buf: &mut Buffer, y: u16, s: &str, ink: Ink| {
+        let lines_h = if self.subtitle.is_empty() { 1 } else { 2 };
+        let title_w = area.width.saturating_sub(tw);
+        let trail_on_sub = self.trailing.iter().any(|d| {
+            let h = d.size(t).1;
+            let dy = (lines_h.max(h) - h) / 2;
+            dy + h > 1
+        });
+        let sub_w = if self.centered || trail_on_sub { title_w } else { area.width };
+        let put_line = |buf: &mut Buffer, y: u16, w: u16, s: &str, ink: Ink| {
             if self.centered {
-                text_center(t, buf, area.x, y, lines_w, s, ink);
+                text_center(t, buf, area.x, y, w, s, ink);
             } else {
-                text_fit(t, buf, area.x, y, s, lines_w, ink);
+                text_fit(t, buf, area.x, y, s, w, ink);
             }
         };
-        put_line(buf, area.y, self.text, Ink::new(t.fg()).bold(true));
+        put_line(buf, area.y, title_w, self.text, Ink::new(t.fg()).bold(true));
         if !self.subtitle.is_empty() {
-            put_line(buf, area.y + 1, self.subtitle, Ink::new(t.dim()));
+            put_line(buf, area.y + 1, sub_w, self.subtitle, Ink::new(t.dim()));
         }
         let mut x = area.right().saturating_sub(tw) + if tw > 0 { 1 } else { 0 };
-        let lines_h = if self.subtitle.is_empty() { 1 } else { 2 };
         for d in self.trailing {
             let (w, h) = d.size(t);
             let dy = (lines_h.max(h) - h) / 2;

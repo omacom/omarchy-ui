@@ -362,7 +362,7 @@ func navigation(s *State) o.Component {
 }
 
 func forms(s *State) o.Component {
-	settings := o.Column(0,
+	settings := o.Column(1,
 		ui.NewSettingRow("Night light").Description("Warm the screen after sunset").Control(ui.NewToggleSwitch(s.nightToggle).Cursor(s.hot("night")).Key("night")).Width(60),
 		ui.NewSettingRow("Theme").Description("Applies to every app").Control(ui.NewDropdown(themes[s.themeChoice]).Width(23)).Width(60),
 		ui.NewSettingRow("Gaps").Description("Space between windows").Control(ui.NewNumberField(s.gaps).Range(0, 40).Width(15)).Width(60),

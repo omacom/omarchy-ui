@@ -364,7 +364,7 @@ fn navigation(s: &State) -> Col {
 }
 
 fn forms(s: &State) -> Col {
-    let settings = col(0)
+    let settings = col(1)
         .child(SettingRow::new("Night light").description("Warm the screen after sunset").control(ToggleSwitch::new(s.night_toggle).cursor(hot(s, "night")).key("night")).width(60))
         .child(SettingRow::new("Theme").description("Applies to every app").control(Dropdown::new(THEMES[s.theme_choice]).width(23)).width(60))
         .child(SettingRow::new("Gaps").description("Space between windows").control(NumberField::new(s.gaps).range(0, 40).width(15)).width(60));

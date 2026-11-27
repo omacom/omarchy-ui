@@ -151,7 +151,7 @@ func (p Pane) Draw(t *Theme, area Rect, buf *Buffer) {
 	c := &t.Shown().Controls
 	l, tp, r, b := p.edge()
 	if p.bordered {
-		omarchy.Fill(t, buf, area, c.Normal.Fill)
+		omarchy.Fill(t, buf, area.Inset(1, 1), c.Normal.Fill)
 		omarchy.Frame(t, buf, area, c.Normal.Border.Color, "", Ink{})
 	} else {
 		switch p.divider {
@@ -238,7 +238,7 @@ func (h head) trailingW(t *Theme) int {
 }
 
 func (h head) size(t *Theme) (int, int) {
-	lines := max(width(h.text), width(h.subtitle))
+	tw := h.trailingW(t)
 	th := 0
 	for _, d := range h.trailing {
 		_, dh := d.Size(t)
@@ -250,32 +250,49 @@ func (h head) size(t *Theme) (int, int) {
 	}
 	w := h.width
 	if w == 0 {
-		w = lines + h.trailingW(t)
+		if th > 1 || h.centered {
+			w = max(width(h.text), width(h.subtitle)) + tw
+		} else {
+			w = max(width(h.text)+tw, width(h.subtitle))
+		}
 	}
 	return w, max(hh, th)
 }
 
 func (h head) draw(t *Theme, area Rect, buf *Buffer) {
 	tw := h.trailingW(t)
-	linesW := sub(area.W, tw)
-	line := func(y int, s string, k Ink) {
-		if h.centered {
-			omarchy.TextCenter(t, buf, area.X, y, linesW, s, k)
-		} else {
-			omarchy.TextFit(t, buf, area.X, y, s, linesW, k)
+	linesH := 2
+	if h.subtitle == "" {
+		linesH = 1
+	}
+	titleW := sub(area.W, tw)
+	trailOnSub := false
+	for _, d := range h.trailing {
+		_, dh := d.Size(t)
+		dy := (max(linesH, dh) - dh) / 2
+		if dy+dh > 1 {
+			trailOnSub = true
+			break
 		}
 	}
-	line(area.Y, h.text, bold(t.Fg(), true))
+	subW := area.W
+	if h.centered || trailOnSub {
+		subW = titleW
+	}
+	line := func(y, w int, s string, k Ink) {
+		if h.centered {
+			omarchy.TextCenter(t, buf, area.X, y, w, s, k)
+		} else {
+			omarchy.TextFit(t, buf, area.X, y, s, w, k)
+		}
+	}
+	line(area.Y, titleW, h.text, bold(t.Fg(), true))
 	if h.subtitle != "" {
-		line(area.Y+1, h.subtitle, ink(t.Dim()))
+		line(area.Y+1, subW, h.subtitle, ink(t.Dim()))
 	}
 	x := sub(area.Right(), tw)
 	if tw > 0 {
 		x++
-	}
-	linesH := 2
-	if h.subtitle == "" {
-		linesH = 1
 	}
 	for _, d := range h.trailing {
 		w, dh := d.Size(t)
