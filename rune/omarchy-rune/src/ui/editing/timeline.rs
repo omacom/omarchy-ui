@@ -269,13 +269,14 @@ impl Timeline {
                     (Look::new(c.normal.fill, c.normal.border.clone()), Look::new(c.hover.fill, c.hover.border.clone()))
                 };
                 let label_style = if selected { t.text_style_bold(label_size) } else { t.text_style(label_size) };
+                let label_inset = if selected { t.space(8.0) + sp.md as f32 } else { pad };
                 let label = text(clip.label.clone())
                     .font(label_style)
                     .color(t.fg())
                     .single_line()
                     .truncate()
-                    .absolute(pad, ((ch - label_h) / 2.0).floor())
-                    .w((cw - pad * 2.0).max(0.0));
+                    .absolute(label_inset, ((ch - label_h) / 2.0).floor())
+                    .w((cw - label_inset * 2.0).max(0.0));
                 let base = el().absolute(x, ly + inset).size(cw, ch).cursor(Cursor::Pointer).key(format!("clip-{ti}-{ci}"));
                 let base = match &self.select {
                     Some(sel) => sel(base, ti, ci),

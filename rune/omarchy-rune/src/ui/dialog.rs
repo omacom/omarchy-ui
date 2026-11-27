@@ -137,6 +137,7 @@ impl Dialog {
             let mut b = row()
                 .size(t.space(88.0), t.space(34.0))
                 .center()
+                .radius(t.radius())
                 .fill(color(fill))
                 .border(line as f32, color(edge))
                 .role("button")

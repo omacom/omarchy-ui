@@ -2,7 +2,7 @@
 //! `ButtonGroup.qml`.
 
 use omarchy_theme::{BorderSpec, Rgba};
-use rune::{El, row, text};
+use rune::{El, el, row, text};
 
 use super::{Attach, Look, chrome, glyph, reserve};
 use crate::{Theme, color};
@@ -74,7 +74,13 @@ impl Button {
         let style = if self.selected { t.text_style_bold(tk.font.body) } else { t.text_style(tk.font.body) };
         let mut kids = Vec::new();
         if let Some(icon) = &self.icon {
-            kids.push(glyph(t, icon, tk.font.icon, ink));
+            let mark = glyph(t, icon, tk.font.icon, ink);
+            if self.label.is_empty() {
+                kids.push(mark);
+            } else {
+                // Keep the row height on the body line box so icon + label buttons match text-only siblings.
+                kids.push(row().h(tk.font.line_px(tk.font.body) as f32).items_center().child(mark));
+            }
         }
         if !self.label.is_empty() {
             kids.push(text(self.label.clone()).font(style).color(ink).single_line());
@@ -135,11 +141,16 @@ impl IconButton {
         self
     }
 
+    pub(crate) fn size(t: &Theme) -> f32 {
+        let tk = t.tokens();
+        ((t.space(22.0)).max((tk.font.icon + tk.spacing.sm * 2) as f32).round() as i64 | 1) as f32
+    }
+
     pub fn build(self, t: &Theme) -> El {
         let tk = t.tokens();
         let c = &tk.controls;
         let icon = tk.font.icon;
-        let size = ((t.space(22.0)).max((icon + tk.spacing.sm * 2) as f32).round() as i64 | 1) as f32;
+        let size = Self::size(t);
         let rest = Look::new(Rgba::TRANSPARENT, if self.bordered { c.normal.border.clone() } else { BorderSpec::none() });
         // PanelActionButton shows the hover border only when bordered.
         let hot = Look::new(c.hover.fill, if self.bordered { c.hover.border.clone() } else { BorderSpec::none() });
@@ -150,8 +161,16 @@ impl IconButton {
             .label(self.label.clone())
             .focusable(true)
             .press_scale(0.97);
-        let mark = glyph(t, &self.glyph, icon, t.fg());
-        let e = chrome(t, base, vec![mark], &rest, &hot, self.cursor, t.radius());
+        let style = t.text_style(icon);
+        let mark = match rune::text::ink(&self.glyph, style).map(|i| i.bounds) {
+            Some([ix, iy, iw, ih]) if iw > 0.0 && ih > 0.0 => {
+                let x = (size / 2.0 - (ix + iw / 2.0)).round();
+                let y = (size / 2.0 - (iy + ih / 2.0)).round();
+                el().size(size, size).child(text(self.glyph).font(style).color(t.fg()).single_line().absolute(x, y))
+            }
+            _ => glyph(t, &self.glyph, icon, t.fg()),
+        };
+        let e = chrome(t, base, vec![mark], &rest, &hot, self.cursor, t.radius_small());
         match self.press {
             Some(attach) => attach(e),
             None => e,

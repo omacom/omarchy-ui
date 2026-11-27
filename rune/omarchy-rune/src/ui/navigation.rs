@@ -5,7 +5,7 @@
 use omarchy_theme::BorderSpec;
 use rune::{El, Key, TextStyle, col, el, row, text};
 
-use super::{Attach, Look, chrome, section_header};
+use super::{Attach, Look, chrome, chrome_corners, section_header};
 use crate::{Theme, border, color};
 
 /// Text centered in a `w` × `h` box by its ink rather than its advance, as the Qt kit's
@@ -388,7 +388,8 @@ impl Tabs {
             if selected {
                 kids.push(el().pin(Some(0.0), None, Some(0.0), Some(0.0)).h(sp.xxs as f32).fill(t.accent()));
             }
-            let tab = chrome(t, base, kids, &rest, &hot, forced, t.radius_small());
+            let r = t.radius_small();
+            let tab = chrome_corners(t, base, kids, &rest, &hot, forced, [r, r, 0.0, 0.0]);
             let tab = t.key_map(tab, ends(i, n, Axis::Row));
             tabs = tabs.child(match &self.choose {
                 Some(attach) => attach(tab, i),

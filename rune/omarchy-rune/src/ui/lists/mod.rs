@@ -264,7 +264,7 @@ impl ListRow {
         if has_action || !self.trailing_glyph.is_empty() {
             let side = t.space(22.0);
             let shown = has_action && !self.disabled && (self.cursor || self.action_cursor);
-            let mut slot = row().size(side, side).center().radius(t.radius());
+            let mut slot = row().size(side, side).center().radius(t.radius_small());
             if has_action && self.action_cursor && !self.disabled {
                 // The cursor look in the action's own ink, whatever color the theme gives the cursor.
                 let tone = if self.action_urgent { tk.palette.urgent } else { tk.palette.foreground };

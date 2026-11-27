@@ -10,6 +10,8 @@ pub fn build(_s: &State, t: &Theme, _layer: &mut Vec<El>) -> Vec<El> {
     let sp = &tk.spacing;
     let p = &tk.palette;
     let mut swatches = row().gap(sp.lg as f32);
+    let r = t.radius_small();
+    let bw = 1.0;
     for (name, c) in [
         ("foreground", p.foreground),
         ("background", p.background),
@@ -21,7 +23,11 @@ pub fn build(_s: &State, t: &Theme, _layer: &mut Vec<El>) -> Vec<El> {
             col()
                 .gap(sp.xs as f32)
                 .child(
-                    el().size(64.0, 32.0).radius(t.radius_small()).fill(color(c)).border(1.0, color(tk.controls.normal.border.color)),
+                    el()
+                        .size(64.0, 32.0)
+                        .radius(r)
+                        .border(bw, color(tk.controls.normal.border.color))
+                        .child(el().pin(Some(bw), Some(bw), Some(bw), Some(bw)).radius((r - bw).max(0.0)).fill(color(c))),
                 )
                 .child(text(name).font(t.text_style(tk.font.caption)).color(t.fg())),
         );

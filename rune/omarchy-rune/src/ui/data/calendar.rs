@@ -154,22 +154,19 @@ impl Calendar {
             }
         };
         let title = format!("{} {}", MONTHS[self.month as usize - 1], self.year).to_uppercase();
+        let btn_size = IconButton::size(t);
+        let inset = ((cw - btn_size) / 2.0).round();
         let header = el()
             .w(grid_w)
+            .h(btn_size)
             .child(
                 row()
                     .pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0))
                     .items_center()
                     .child(text(title).font(t.text_style(tk.font.body)).color(t.dim()).align(Align::Center).w_full().single_line()),
             )
-            .child(
-                row()
-                    .w_full()
-                    .items_center()
-                    .justify_between()
-                    .child(stepper("\u{f0141}", &tk.string("clock.previousMonth", "Previous month"), -1))
-                    .child(stepper("\u{f0142}", &tk.string("clock.nextMonth", "Next month"), 1)),
-            );
+            .child(stepper("\u{f0141}", &tk.string("clock.previousMonth", "Previous month"), -1).absolute(inset, 0.0))
+            .child(stepper("\u{f0142}", &tk.string("clock.nextMonth", "Next month"), 1).absolute(grid_w - cw + inset, 0.0));
 
         // ---- Weekdays
         let mut weekdays = row().gap(gap);

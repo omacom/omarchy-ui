@@ -85,12 +85,17 @@ pub(crate) fn reserve(looks: &[&BorderSpec]) -> [f32; 4] {
 /// the shell's state ladder does rather than stacking on it. `base` is the laid-out container
 /// without children.
 pub(crate) fn chrome(t: &Theme, base: El, children: Vec<El>, rest: &Look, hot: &Look, forced: bool, radius: f32) -> El {
+    chrome_corners(t, base, children, rest, hot, forced, [radius; 4])
+}
+
+/// Like [`chrome`], with per-corner radii `[top-left, top-right, bottom-right, bottom-left]`.
+pub(crate) fn chrome_corners(t: &Theme, base: El, children: Vec<El>, rest: &Look, hot: &Look, forced: bool, corners: [f32; 4]) -> El {
     let layer = |look: &Look| {
-        let e = el().pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).radius(radius).fill(color(look.fill));
+        let e = el().pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).corners(corners).fill(color(look.fill));
         border(e, &look.border)
     };
     let pressed = color(t.tokens().controls.pressed.fill);
-    let base = base.hover_group_focus().radius(radius).press(pressed);
+    let base = base.hover_group_focus().corners(corners).press(pressed);
     let base = if forced {
         base.child(layer(hot))
     } else {
