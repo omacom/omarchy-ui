@@ -135,7 +135,7 @@ Item {
             borderSpec: Border.flat(urgent
               ? (selected ? Commons.Color.urgent : Util.alpha(Commons.Color.urgent, 0.56))
               : (selected ? root.selectedText : Util.alpha(root.foreground, 0.38)), Style.normalBorderWidth)
-            radius: 0
+            radius: root.cornerRadius
 
             Text {
               textFormat: Text.PlainText

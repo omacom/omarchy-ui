@@ -127,7 +127,7 @@ FocusScope {
 
       PanelActionButton {
         id: prev
-        anchors.left: parent.left
+        x: Math.round((root.cellWidth - width) / 2)
         iconText: "󰅁"
         tooltipText: Commons.I18n.t("clock.previousMonth", "Previous month")
         foreground: root.foreground
@@ -135,7 +135,7 @@ FocusScope {
       }
 
       PanelActionButton {
-        anchors.right: parent.right
+        x: root.width - root.cellWidth + Math.round((root.cellWidth - width) / 2)
         iconText: "󰅂"
         tooltipText: Commons.I18n.t("clock.nextMonth", "Next month")
         foreground: root.foreground

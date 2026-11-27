@@ -1,0 +1,135 @@
+diff --git i/qt/qml/Omarchy/Ui/Button.qml w/qt/qml/Omarchy/Ui/Button.qml
+index cce1c54..849ac6d 100644
+--- i/qt/qml/Omarchy/Ui/Button.qml
++++ w/qt/qml/Omarchy/Ui/Button.qml
+@@ -73,8 +73,10 @@ BorderSurface {
+   // relayouts neighboring controls.
+   // Measured from the label's natural width rather than the row, which
+   // narrows the label when the button is held narrower than that.
++  // Height follows the label's line box when a label is present so an icon
++  // button matches text-only sibling buttons in the same row.
+   implicitWidth: _contentNaturalWidth + horizontalPadding * 2 + _reservedBorderLeft + _reservedBorderRight
+-  implicitHeight: row.implicitHeight + verticalPadding * 2 + _reservedBorderTop + _reservedBorderBottom
++  implicitHeight: (root.text !== "" ? label.implicitHeight : iconGlyph.implicitHeight) + verticalPadding * 2 + _reservedBorderTop + _reservedBorderBottom
+   radius: Style.cornerRadius
+ 
+   readonly property bool hot: mouseArea.containsMouse || hasCursor
+diff --git i/qt/qml/Omarchy/Ui/ConfirmDialog.qml w/qt/qml/Omarchy/Ui/ConfirmDialog.qml
+index b48696a..b2707ce 100644
+--- i/qt/qml/Omarchy/Ui/ConfirmDialog.qml
++++ w/qt/qml/Omarchy/Ui/ConfirmDialog.qml
+@@ -104,7 +104,7 @@ Item {
+               borderSpec: Border.flat(destructive
+                 ? (selected ? Commons.Color.urgent : Util.alpha(Commons.Color.urgent, 0.56))
+                 : (selected ? root.selectedText : Util.alpha(root.foreground, 0.38)), Style.normalBorderWidth)
+-              radius: 0
++              radius: root.cornerRadius
+ 
+               Text {
+                 textFormat: Text.PlainText
+diff --git i/qt/qml/Omarchy/Ui/Dropdown.qml w/qt/qml/Omarchy/Ui/Dropdown.qml
+index ba8346c..cd98ebc 100644
+--- i/qt/qml/Omarchy/Ui/Dropdown.qml
++++ w/qt/qml/Omarchy/Ui/Dropdown.qml
+@@ -133,7 +133,7 @@ Item {
+         anchors.verticalCenter: parent.verticalCenter
+         anchors.rightMargin: trigger.borderRight + Style.spacing.controlGap
+         text: "󰅀"
+-        color: Qt.darker(root.foreground, 1.2)
++        color: Commons.Color.textDim
+         font.family: root.fontFamily
+         font.pixelSize: Style.font.body
+       }
+diff --git i/qt/qml/Omarchy/Ui/PanelActionButton.qml w/qt/qml/Omarchy/Ui/PanelActionButton.qml
+index c37ea98..b65a374 100644
+--- i/qt/qml/Omarchy/Ui/PanelActionButton.qml
++++ w/qt/qml/Omarchy/Ui/PanelActionButton.qml
+@@ -52,7 +52,7 @@ BorderSurface {
+ 
+   implicitWidth: size
+   implicitHeight: size
+-  radius: Style.cornerRadius
++  radius: Math.min(4, Style.cornerRadius)
+ 
+   readonly property bool _showFocusRing: focusable && activeFocus
+   readonly property bool _hot: (mouse.containsMouse || root.hasCursor) && root.enabled
+@@ -71,11 +71,28 @@ BorderSurface {
+ 
+   Behavior on color { ColorAnimation { duration: Style.duration(60) } }
+ 
++  // Measure tight ink bounds at 100x so Nerd Font glyphs with asymmetric side
++  // bearings or vertical offsets center optically inside the square button.
++  readonly property int _metricsScale: 100
++  TextMetrics {
++    id: iconMetrics
++    font.family: root.fontFamily
++    font.pixelSize: Math.max(1, Math.round(root.fontSize)) * root._metricsScale
++    text: root.iconText
++  }
++
+   Text {
++    id: iconGlyph
+     textFormat: Text.PlainText
+-    // Snap to whole pixels so the glyph doesn't round away from the fill's center.
+-    x: Math.round((root.width - width) / 2)
+-    y: Math.round((root.height - height) / 2)
++    readonly property rect _ink: Qt.rect(
++      iconMetrics.tightBoundingRect.x / root._metricsScale,
++      iconMetrics.tightBoundingRect.y / root._metricsScale,
++      iconMetrics.tightBoundingRect.width / root._metricsScale,
++      iconMetrics.tightBoundingRect.height / root._metricsScale)
++    readonly property bool _hasInk: _ink.width > 0 && _ink.height > 0
++    // Center optical ink bounds, snapped to whole pixels for crisp edges.
++    x: _hasInk ? Math.round(root.width / 2 - (_ink.x + _ink.width / 2)) : Math.round((root.width - width) / 2)
++    y: _hasInk ? Math.round(root.height / 2 - (baselineOffset + _ink.y + _ink.height / 2)) : Math.round((root.height - height) / 2)
+     text: root.iconText
+     color: root.enabled
+       ? (root._hot ? root.hoverColor : root.foreground)
+diff --git i/qt/qml/Omarchy/Ui/PanelSlider.qml w/qt/qml/Omarchy/Ui/PanelSlider.qml
+index db37773..04030cd 100644
+--- i/qt/qml/Omarchy/Ui/PanelSlider.qml
++++ w/qt/qml/Omarchy/Ui/PanelSlider.qml
+@@ -76,7 +76,7 @@ Item {
+   }
+ 
+   Repeater {
+-    model: root.tickCount > 1 ? root.tickCount : 0
++    model: root.tickCount > 2 ? root.tickCount - 2 : 0
+     Rectangle {
+       required property int index
+       width: Math.max(1, Style.space(2))
+@@ -84,7 +84,7 @@ Item {
+       radius: 1
+       color: root.tickColor
+       anchors.verticalCenter: track.verticalCenter
+-      x: root.trackX(index / (root.tickCount - 1)) - width / 2
++      x: root.trackX((index + 1) / (root.tickCount - 1)) - width / 2
+     }
+   }
+ 
+diff --git i/qt/qml/Omarchy/Ui/SearchableDropdown.qml w/qt/qml/Omarchy/Ui/SearchableDropdown.qml
+index 9154140..f950275 100644
+--- i/qt/qml/Omarchy/Ui/SearchableDropdown.qml
++++ w/qt/qml/Omarchy/Ui/SearchableDropdown.qml
+@@ -155,7 +155,7 @@ Item {
+         anchors.verticalCenter: parent.verticalCenter
+         anchors.rightMargin: trigger.borderRight + Style.spacing.controlGap
+         text: "󰅀"
+-        color: Qt.darker(root.foreground, 1.2)
++        color: Commons.Color.textDim
+         font.family: root.fontFamily
+         font.pixelSize: Style.font.body
+       }
+diff --git i/qt/qml/Omarchy/Ui/ToggleSwitch.qml w/qt/qml/Omarchy/Ui/ToggleSwitch.qml
+index 20f95fa..aee0ee3 100644
+--- i/qt/qml/Omarchy/Ui/ToggleSwitch.qml
++++ w/qt/qml/Omarchy/Ui/ToggleSwitch.qml
+@@ -96,7 +96,7 @@ Item {
+       radius: root.rounded ? height / 2 : 0
+       x: root.checked !== root.mirrored ? track.width - width - root.knobInset : root.knobInset
+       anchors.verticalCenter: parent.verticalCenter
+-      color: root.checked ? Style.selectedStateColor(root.foreground, root.accent) : Qt.darker(root.foreground, 1.25)
++      color: root.checked ? Style.selectedStateColor(root.foreground, root.accent) : Commons.Color.textDim
+ 
+       Behavior on x { NumberAnimation { duration: Style.duration(120); easing.type: Easing.OutCubic } }
+       Behavior on color { ColorAnimation { duration: Style.duration(120) } }

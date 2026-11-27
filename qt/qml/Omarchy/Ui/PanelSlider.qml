@@ -76,7 +76,7 @@ Item {
   }
 
   Repeater {
-    model: root.tickCount > 1 ? root.tickCount : 0
+    model: root.tickCount > 2 ? root.tickCount - 2 : 0
     Rectangle {
       required property int index
       width: Math.max(1, Style.space(2))
@@ -84,7 +84,7 @@ Item {
       radius: 1
       color: root.tickColor
       anchors.verticalCenter: track.verticalCenter
-      x: root.trackX(index / (root.tickCount - 1)) - width / 2
+      x: root.trackX((index + 1) / (root.tickCount - 1)) - width / 2
     }
   }
 

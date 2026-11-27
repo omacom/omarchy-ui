@@ -54,15 +54,15 @@ Terminal bindings draw every component here on the cell grid as [`terminal.md`](
 
 | Part | Value |
 |---|---|
-| Button padding | `controlPaddingX` 10 × `controlPaddingY` 6, icon–label gap `controlGap` 8, label `body` |
-| IconButton | `max(space(22), icon + sm × 2) | 1` square, glyph `icon` |
+| Button padding | `controlPaddingX` 10 × `controlPaddingY` 6, icon–label gap `controlGap` 8, label `body`, height from `body` line box (icon + label matches text-only height) |
+| IconButton | `max(space(22), icon + sm × 2) | 1` square, glyph `icon` optically centered by ink bounds, corners `min(4, radius)` |
 | ButtonGroup gap | `md` 6 |
-| ToggleSwitch | track `max(22, round(controlHeight × 0.55))` tall, × 1.9 wide; knob `round(track × 0.72)`; cursor ring `space(6)` outside; knob off = foreground darker 1.25, on = selected text |
+| ToggleSwitch | track `max(22, round(controlHeight × 0.55))` tall, × 1.9 wide; knob `round(track × 0.72)`; cursor ring `space(6)` outside; knob off = `textDim`, on = selected text |
 | Toggle | min height 54, padding `rowPaddingX` 12, title `subtitle` bold, description `caption` `textDim` |
 | TextField | padding `controlPaddingX` × `inputPaddingY` 7, text `body`, placeholder `textFaint` |
 | NumberField | `numberFieldWidth` 120 × `controlHeight` 28, label `bodySmall` `textDim`, `md` above |
-| Dropdown | `dropdownWidth` 240 × `controlHeight`, label `bodySmall` bold `textDim`, chevron foreground darker 1.2 |
-| Slider | track `max(4, round(controlHeight × 0.11))`, knob `max(14, round(controlHeight × 0.38))` with a `space(2)` ring in the surface color, notches `space(2)` wide |
+| Dropdown | `dropdownWidth` 240 × `controlHeight`, label `caption` bold `textDim`, chevron `textDim` |
+| Slider | track `max(4, round(controlHeight × 0.11))`, knob `max(14, round(controlHeight × 0.38))` with a `space(2)` ring in the surface color, interior notches `space(2)` wide |
 | Card | `panelPadding` 18, children `panelGap` 14 apart, popups border at `max(1, space(2))` |
 | MenuRow | `popupRowHeight` 28, text inset `controlPaddingX` |
 | Tooltip | padding `controlPaddingX` × `controlPaddingY`, border `max(1, normal border width)`, corners `radius` (Button's built-in tooltip too: `qt/patches/0004`) |

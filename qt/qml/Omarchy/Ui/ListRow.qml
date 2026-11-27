@@ -207,7 +207,7 @@ CursorSurface {
           // The cursor look in the action's own ink, whatever color the theme gives the cursor.
           color: Commons.Util.alpha(ink, Style.hoverFillAlpha)
           borderSpec: Border.flat(Commons.Util.alpha(ink, Style.hoverBorderAlpha), Style.hoverBorderWidth)
-          radius: Style.cornerRadius
+          radius: Math.min(4, Style.cornerRadius)
         }
 
         Text {

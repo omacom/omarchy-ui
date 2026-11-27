@@ -186,9 +186,11 @@ Item {
             borderSpec: clipItem._spec
           }
 
+          readonly property real _labelInset: clipItem.selected ? Style.space(8) + Style.spacing.md : Style.spacing.controlPaddingX
+
           Text {
-            x: Style.spacing.controlPaddingX
-            width: Math.max(0, parent.width - Style.spacing.controlPaddingX * 2)
+            x: clipItem._labelInset
+            width: Math.max(0, parent.width - clipItem._labelInset * 2)
             anchors.verticalCenter: parent.verticalCenter
             text: clipItem.modelData.label || ""
             elide: Text.ElideRight
