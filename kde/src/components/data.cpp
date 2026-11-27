@@ -344,7 +344,9 @@ void Table::paintEvent(QPaintEvent *) {
       Paint::textIn(p, box, cols.at(i).alignRight ? Qt::AlignRight : Qt::AlignLeft, f, ink, cells.value(i));
       x += cw;
     }
-    if (m_separators && r < n - 1) p.fillRect(QRectF(0, y + rh - hair, W, hair), tk.track());
+    const bool nextHighlighted = (m_selected == r + 1) || (showCursor && m_cursor == r + 1);
+    if (m_separators && r < n - 1 && !selected && !cursor && !nextHighlighted)
+      p.fillRect(QRectF(0, y + rh - hair, W, hair), tk.track());
   }
   p.restore();
 }
@@ -560,14 +562,11 @@ void Tree::paintEvent(QPaintEvent *) {
     const qreal slotX = md + r.depth * huge;
     if (r.branch) {
       const QString chevron = cp(r.open ? 0xF0140 : 0xF0142);
-      const QSizeF s = Paint::textSize(chevronFont, chevron);
-      Paint::text(p, QPointF(slotX + std::lround((slotW - s.width()) / 2), y + Paint::centered(rh, s.height())), chevronFont, tk.textDim(),
-                  chevron);
+      Paint::opticalGlyph(p, QRectF(slotX, y, slotW, rh), chevronFont, tk.textDim(), chevron);
     }
     const qreal glyphX = slotX + slotW + sm;
     if (!r.glyph.isEmpty()) {
-      const QSizeF s = Paint::textSize(glyphFont, r.glyph);
-      Paint::text(p, QPointF(glyphX, y + Paint::centered(rh, s.height())), glyphFont, selected ? tk.selectedText() : tk.textDim(), r.glyph);
+      Paint::opticalGlyph(p, QRectF(glyphX, y, iconPx, rh), glyphFont, selected ? tk.selectedText() : tk.textDim(), r.glyph);
     }
     const qreal labelX = glyphX + (r.glyph.isEmpty() ? 0 : iconPx + md);
     const QFont &f = selected ? bold : body;

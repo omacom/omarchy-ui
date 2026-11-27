@@ -118,7 +118,8 @@ QSizeF Button::implicitSize() const {
     h = s.height();
   }
   const QMargins r = reserved();
-  return QSizeF(w + hpad() * 2 + r.left() + r.right(), h + vpad() * 2 + r.top() + r.bottom());
+  return QSizeF(std::ceil(w - 1e-6) + hpad() * 2 + r.left() + r.right(),
+                std::ceil(h - 1e-6) + vpad() * 2 + r.top() + r.bottom());
 }
 
 QSize Button::sizeHint() const {
@@ -293,16 +294,16 @@ void IconButton::paintEvent(QPaintEvent *) {
     QTextLine line = layout.createLine();
     if (line.isValid()) line.setPosition(QPointF(0, 0));
     layout.endLayout();
-    const qreal baseline = line.isValid() ? line.ascent() : QFontMetricsF(font).ascent();
-    qreal x, y;
+    const qreal lh = line.isValid() ? line.height() : Paint::lineHeight(font);
+    qreal x;
     if (ink.width() > 0 && ink.height() > 0) {
       x = std::floor(width() / 2.0 - (ink.x() + ink.width() / 2.0) + 0.5);
-      y = std::floor(height() / 2.0 - (baseline + ink.y() + ink.height() / 2.0) + 0.5);
     } else {
-      const QSizeF s = line.isValid() ? QSizeF(line.naturalTextWidth(), line.height()) : Paint::textSize(font, m_icon);
-      x = std::floor((width() - s.width()) / 2.0 + 0.5);
-      y = std::floor((height() - s.height()) / 2.0 + 0.5);
+      const qreal w = line.isValid() ? line.naturalTextWidth() : Paint::textWidth(font, m_icon);
+      x = std::floor((width() - w) / 2.0 + 0.5);
     }
+    // Center Y on the line box (Qt's tightBoundingRect unions with y=0, shifting glyphs above the baseline like U+F141 upward by 2pt).
+    const qreal y = Paint::centered(height(), lh);
     p.setPen(color);
     layout.draw(&p, QPointF(x, y));
   }

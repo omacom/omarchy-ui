@@ -191,6 +191,24 @@ private Q_SLOTS:
     QCOMPARE(f.text(), QStringLiteral("omarchy"));
     QCOMPARE(f.sizeHint().height(), 32);
   }
+
+  void labeled_inputs_and_setting_row_match_polish_metrics() {
+    NumberField nf(QStringLiteral("Gaps"));
+    Dropdown dd(QStringLiteral("Theme"));
+    MultiSelect ms(QStringLiteral("Notify for"));
+    QCOMPARE(nf.sizeHint().height(), dd.sizeHint().height());
+    QCOMPARE(ms.sizeHint().height(), dd.sizeHint().height());
+
+    SettingRow row(QStringLiteral("Wi-Fi"));
+    row.addControl(new ToggleSwitch);
+    QCOMPARE(row.heightForWidth(320), 40);
+
+    QWidget host;
+    host.resize(340, 170);
+    ConfirmDialog cd(QStringLiteral("Remove it?"), &host);
+    cd.setConfirmText(QStringLiteral("Permanently Delete Everything"));
+    QVERIFY(cd.buttonRect(1).width() > shown().space(88));
+  }
 };
 
 OMARCHY_TEST(Surfaces)

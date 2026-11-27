@@ -217,6 +217,8 @@ private Q_SLOTS:
     QTest::mouseClick(&cal, Qt::LeftButton, {}, cal.dayRect(QDate(2026, 11, 3)).center());
     QCOMPARE(cal.selected(), QDate(2026, 11, 3));
     QCOMPARE(picked.count(), 2);
+    cal.resize(400, cal.sizeHint().height());
+    QVERIFY(cal.nextButton()->geometry().right() + 1 <= cal.sizeHint().width());
   }
 
   void split_view_drags_the_handle_within_the_pane_limits() {

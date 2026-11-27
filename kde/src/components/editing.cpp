@@ -91,6 +91,36 @@ void TrimHandle::updateCursor() {
   else setCursor(Qt::SizeBDiagCursor);
 }
 
+static void fillRoundedCorners(QPainter &p, const QRectF &r, qreal tl, qreal tr, qreal bl, qreal br, const QColor &fill) {
+  if (r.width() <= 0 || r.height() <= 0 || fill.alpha() <= 0) return;
+  const qreal maxR = qMin(r.width(), r.height()) / 2.0;
+  tl = qBound(0.0, tl, maxR);
+  tr = qBound(0.0, tr, maxR);
+  bl = qBound(0.0, bl, maxR);
+  br = qBound(0.0, br, maxR);
+  p.save();
+  p.setPen(Qt::NoPen);
+  const bool any = tl > 0 || tr > 0 || bl > 0 || br > 0;
+  p.setRenderHint(QPainter::Antialiasing, any);
+  if (!any) {
+    p.fillRect(r, fill);
+  } else {
+    QPainterPath path;
+    path.moveTo(r.left() + tl, r.top());
+    path.lineTo(r.right() - tr, r.top());
+    if (tr > 0) path.arcTo(QRectF(r.right() - 2 * tr, r.top(), 2 * tr, 2 * tr), 90, -90);
+    path.lineTo(r.right(), r.bottom() - br);
+    if (br > 0) path.arcTo(QRectF(r.right() - 2 * br, r.bottom() - 2 * br, 2 * br, 2 * br), 0, -90);
+    path.lineTo(r.left() + bl, r.bottom());
+    if (bl > 0) path.arcTo(QRectF(r.left(), r.bottom() - 2 * bl, 2 * bl, 2 * bl), 270, -90);
+    path.lineTo(r.left(), r.top() + tl);
+    if (tl > 0) path.arcTo(QRectF(r.left(), r.top(), 2 * tl, 2 * tl), 180, -90);
+    path.closeSubpath();
+    p.fillPath(path, fill);
+  }
+  p.restore();
+}
+
 void TrimHandle::paint(QPainter &p, const QRectF &r, const QString &edge, bool crop, bool hot, const QColor &color, const QColor &grip) {
   const Tokens &tk = shown();
   const QColor c = hot ? hotColor(color, tk) : color;
@@ -104,14 +134,23 @@ void TrimHandle::paint(QPainter &p, const QRectF &r, const QString &edge, bool c
     Paint::surface(p, QRectF(r.x() + jsRound((r.width() - gw) / 2), r.y() + jsRound((r.height() - gh) / 2), gw, gh), qMin(small, gw / 2), grip);
     return;
   }
-  const qreal th = tk.space(4), radius = qMin(small, th / 2);
+  // Outer edges flush against the 1px crop border stay square at r8; only inner-facing / free corners round.
+  const qreal th = tk.space(4), cr = qMin(small, th / 2);
   const bool corner = edge.indexOf(QLatin1Char('-')) > 0;
   const bool hbar = edge == QLatin1String("top") || edge == QLatin1String("bottom");
   const qreal y = corner && edge.startsWith(QLatin1String("bottom")) ? r.height() - th : 0;
-  Paint::surface(p, QRectF(r.x(), r.y() + y, corner || hbar ? r.width() : th, corner || hbar ? th : r.height()), radius, c);
+  const qreal tl1 = (edge == QLatin1String("bottom") || edge == QLatin1String("right") || edge == QLatin1String("bottom-right")) ? cr : 0;
+  const qreal tr1 = (edge == QLatin1String("bottom") || edge == QLatin1String("left") || edge == QLatin1String("bottom-left")) ? cr : 0;
+  const qreal bl1 = (edge == QLatin1String("top") || edge == QLatin1String("right") || edge == QLatin1String("top-right")) ? cr : 0;
+  const qreal br1 = (edge == QLatin1String("top") || edge == QLatin1String("left") || edge == QLatin1String("top-left")) ? cr : 0;
+  fillRoundedCorners(p, QRectF(r.x(), r.y() + y, corner || hbar ? r.width() : th, corner || hbar ? th : r.height()), tl1, tr1, bl1, br1, c);
   if (corner) {
     const qreal x = edge.indexOf(QLatin1String("right")) > 0 ? r.width() - th : 0;
-    Paint::surface(p, QRectF(r.x() + x, r.y(), th, r.height()), radius, c);
+    const qreal tl2 = edge == QLatin1String("bottom-right") ? cr : 0;
+    const qreal tr2 = edge == QLatin1String("bottom-left") ? cr : 0;
+    const qreal bl2 = edge == QLatin1String("top-right") ? cr : 0;
+    const qreal br2 = edge == QLatin1String("top-left") ? cr : 0;
+    fillRoundedCorners(p, QRectF(r.x() + x, r.y(), th, r.height()), tl2, tr2, bl2, br2, c);
   }
 }
 
@@ -343,10 +382,12 @@ void Timeline::paintEvent(QPaintEvent *) {
     Paint::text(p, QPointF(x, tk.spacing("xxs")), caption, tk.textDim(), label);
   }
 
-  // Lanes and clips.
+  // Lanes and clips (clipped to the lanes region below the ruler).
   const qreal small = tk.smallRadius();
   const QFont label = tk.font("bodySmall"), bold = tk.font("bodySmall", true);
   const qreal px = tk.spacing("controlPaddingX");
+  p.save();
+  p.setClipRect(QRectF(0, rh, W, qMax<qreal>(0, height() - rh)));
   for (int tr = 0; tr < m_tracks.size(); ++tr) {
     Paint::surface(p, QRectF(0, laneY(tr), W, laneHeight()), small, tk.fill(State::Normal));
     for (int c = 0; c < m_tracks[tr].size(); ++c) {
@@ -357,7 +398,7 @@ void Timeline::paintEvent(QPaintEvent *) {
       const Border border = sel ? Border::flat(tk.accent(), qMax(1, tk.space(2))) : tk.border(hover ? State::Hover : State::Normal);
       Paint::surface(p, r, small, fill, border);
       const QFont &f = sel ? bold : label;
-      const qreal inset = sel ? tk.space(8) + tk.spacing("md") : px;
+      const qreal inset = sel ? tk.space(8) + px : px;
       const qreal lw = qMax(0.0, r.width() - inset * 2);
       Paint::text(p, QPointF(r.x() + inset, r.y() + Paint::centered(r.height(), Paint::lineHeight(f))), f, tk.foreground(),
                   Paint::elided(f, m_tracks[tr][c].label, lw));
@@ -367,14 +408,16 @@ void Timeline::paintEvent(QPaintEvent *) {
       }
     }
   }
+  p.restore();
 
-  // The playhead.
+  // The playhead: ends flush with the bottom of the last lane.
   if (m_position >= m_viewStart && m_position <= m_viewStart + m_duration / m_zoom) {
     const QColor c = isPlayheadHot() ? hotColor(tk.accent(), tk) : tk.accent();
     const QRectF head = playheadHeadRect();
     const qreal line = qMax(1, tk.space(2));
+    const qreal bottom = m_tracks.isEmpty() ? qreal(height()) : laneY(int(m_tracks.size()) - 1) + laneHeight();
     Paint::surface(p, head, small, c);
-    Paint::surface(p, QRectF(head.x() + jsRound((head.width() - line) / 2), head.bottom(), line, height() - head.bottom()), 0, c);
+    Paint::surface(p, QRectF(head.x() + jsRound((head.width() - line) / 2), head.bottom(), line, qMax(0.0, bottom - head.bottom())), 0, c);
   }
 }
 
@@ -528,19 +571,27 @@ void Scrubber::paintEvent(QPaintEvent *) {
   const QString total = format(m_duration);
   Paint::text(p, QPointF(r.x(), r.y() + Paint::centered(r.height(), lh)), f, tk.textDim(), format(m_position));
   Paint::text(p, QPointF(r.right() - Paint::textWidth(f, total), r.y() + Paint::centered(r.height(), lh)), f, tk.textDim(), total);
+  const QRectF bar = barRect();
   const QRectF track = trackRect();
   const qreal progress = m_duration > 0 ? qBound(0.0, m_position / m_duration, 1.0) : 0;
-  Paint::surface(p, track, track.height() / 2, tk.track());
-  Paint::surface(p, QRectF(track.x(), track.y(), jsRound(track.width() * progress), track.height()), track.height() / 2, tk.foreground());
-  const QRectF k = knobRect();
+  const int ks = scrubKnob(tk);
+  const qreal halfKnob = ks / 2.0;
+  const qreal knobCenter = track.x() + jsRound(track.width() * progress);
+  const qreal fillW = qMax<qreal>(0, qMin(track.width(), knobCenter - halfKnob - track.x()));
+  if (fillW > 0) Paint::surface(p, QRectF(track.x(), track.y(), fillW, track.height()), track.height() / 2, tk.foreground());
+  const qreal unfilledStart = qMin(track.right(), qMax(track.x(), knobCenter + halfKnob));
+  const qreal unfilledW = qMax<qreal>(0, track.right() - unfilledStart);
+  if (unfilledW > 0) Paint::surface(p, QRectF(unfilledStart, track.y(), unfilledW, track.height()), track.height() / 2, tk.track());
+  const qreal ring = qMax(1, tk.space(2));
+  const qreal inner = qMax<qreal>(4, ks - 2 * ring);
+  const QRectF k(knobCenter - inner / 2.0, bar.y() + Paint::centered(bar.height(), inner), inner, inner);
   if (isScrubHot()) {
     const QPointF c = k.center();
     p.translate(c);
     p.scale(1.15, 1.15);
     p.translate(-c);
   }
-  const QColor ring = m_surface.isValid() ? m_surface : tk.color(QStringLiteral("surfaces.popups.background"));
-  Paint::surface(p, k, k.width() / 2, tk.foreground(), Border::flat(ring, qMax(1, tk.space(2))));
+  Paint::surface(p, k, k.width() / 2, tk.foreground());
 }
 
 qreal Scrubber::timeAt(qreal x) const {
@@ -671,7 +722,7 @@ void DragHandle::paintEvent(QPaintEvent *) {
   QPainter p(this);
   const QRectF r = paintRect();
   const qreal d = tk.space(3), g = tk.space(3);
-  const qreal x0 = r.x() + jsRound((r.width() - (d * 2 + g)) / 2), y0 = r.y() + jsRound((r.height() - (d * 3 + g * 2)) / 2);
+  const qreal x0 = r.x() + Paint::centered(r.width(), d * 2 + g), y0 = r.y() + Paint::centered(r.height(), d * 3 + g * 2);
   const QColor c = isGripHot() ? tk.foreground() : tk.textDim();
   for (int i = 0; i < 6; ++i) Paint::surface(p, QRectF(x0 + (i % 2) * (d + g), y0 + (i / 2) * (d + g), d, d), qMin<qreal>(tk.smallRadius(), d / 2), c);
 }

@@ -170,7 +170,8 @@ ListRow::Geometry ListRow::geometry(qreal width, qreal height) const {
   const bool leadShown = shownChild(m_leading) || !m_glyph.isEmpty();
   g.leadW = leadShown ? iconLarge + tk.space(10) : 0;
   const bool glyphShown = !shownChild(m_leading) && !m_glyph.isEmpty();
-  if (glyphShown) g.glyph = Paint::textSize(tk.fontPx(m_glyphSize > 0 ? m_glyphSize : tk.fontSize("title")), m_glyph);
+  const int glyphPx = m_glyphSize > 0 ? m_glyphSize : tk.fontSize("title");
+  if (glyphShown) g.glyph = QSizeF(iconLarge, qMax<qreal>(iconLarge, std::ceil(glyphPx * 1.35)));
   QSizeF lead;
   if (shownChild(m_leading)) lead = implicitOf(m_leading);
   g.leadH = qMax(glyphShown ? g.glyph.height() : 0.0, lead.height());
@@ -304,9 +305,9 @@ void ListRow::paintEvent(QPaintEvent *) {
 
   if (!shownChild(m_leading) && !m_glyph.isEmpty()) {
     const QFont f = tk.fontPx(m_glyphSize > 0 ? m_glyphSize : tk.fontSize("title"));
-    const qreal x = std::round((tk.fontSize("iconLarge") - g.glyph.width()) / 2);
     const QColor c = !enabled ? faint : (m_glyphColor.isValid() ? m_glyphColor : fg);
-    Paint::text(p, o + QPointF(x, g.leadY + Paint::centered(g.leadH, g.glyph.height())), f, c, m_glyph);
+    const QRectF glyphBox(o.x(), o.y() + g.leadY + Paint::centered(g.leadH, g.glyph.height()), tk.fontSize("iconLarge"), g.glyph.height());
+    Paint::opticalGlyph(p, glyphBox, f, c, m_glyph);
   }
 
   const qreal ix = o.x() + g.leadW, iy = o.y() + g.infoY;
@@ -330,8 +331,7 @@ void ListRow::paintEvent(QPaintEvent *) {
     const QString glyph = action ? m_actionGlyph : m_trailingGlyph;
     if (!glyph.isEmpty()) {
       const QColor c = action ? (m_actionUrgent ? tk.urgent() : tk.textDim()) : toneColor(m_trailingTone);
-      const QSizeF s = Paint::textSize(f, glyph);
-      Paint::text(p, slot.topLeft() + QPointF(Paint::centered(slot.width(), s.width()), Paint::centered(slot.height(), s.height())), f, c, glyph);
+      Paint::opticalGlyph(p, slot, f, c, glyph);
     }
   }
 }

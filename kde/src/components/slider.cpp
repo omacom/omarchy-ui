@@ -83,20 +83,34 @@ void Slider::paintEvent(QPaintEvent *) {
   const QColor fg = tk.foreground(), surface = tk.color(QStringLiteral("surfaces.popups.background"));
   const QRectF track = trackRect();
   const qreal radius = track.height() / 2;
-  Paint::surface(p, track, radius, tk.fill(State::Selected, fg));
   const qreal frac = m_dragging ? progress() : m_shown;
   const bool mirrored = layoutDirection() == Qt::RightToLeft;
-  const qreal fw = track.width() * frac;
-  Paint::surface(p, QRectF(mirrored ? track.right() - fw : track.x(), track.y(), fw, track.height()), radius, fg);
+  const int ks = knobSize();
+  const qreal halfKnob = ks / 2.0;
+  const qreal knobCenter = track.x() + track.width() * (mirrored ? 1 - frac : frac);
+
+  // Split filled and unfilled track segments around the knob with a transparent gap so the
+  // slider sits cleanly on any surface without painting an opaque cutout halo.
+  const qreal fillStart = mirrored ? qMin(track.right(), qMax(track.x(), knobCenter + halfKnob)) : track.x();
+  const qreal fillEnd = mirrored ? track.right() : qMax(track.x(), qMin(track.right(), knobCenter - halfKnob));
+  if (fillEnd > fillStart) Paint::surface(p, QRectF(fillStart, track.y(), fillEnd - fillStart, track.height()), radius, fg);
+
+  const qreal trackStart = mirrored ? track.x() : qMin(track.right(), qMax(track.x(), knobCenter + halfKnob));
+  const qreal trackEnd = mirrored ? qMax(track.x(), qMin(track.right(), knobCenter - halfKnob)) : track.right();
+  if (trackEnd > trackStart) Paint::surface(p, QRectF(trackStart, track.y(), trackEnd - trackStart, track.height()), radius, tk.fill(State::Selected, fg));
+
   if (m_ticks > 2) {
     const qreal nw = qMax(1, tk.space(2)), nh = track.height() + tk.space(4);
     for (int i = 1; i < m_ticks - 1; ++i) {
       const qreal f = qreal(i) / (m_ticks - 1);
       const qreal x = track.x() + track.width() * (mirrored ? 1 - f : f);
+      if (std::abs(x - knobCenter) <= halfKnob) continue;
       Paint::surface(p, QRectF(x - nw / 2, track.y() + Paint::centered(track.height(), nh), nw, nh), 1, surface);
     }
   }
-  QRectF k = knobRect();
+  const qreal ring = qMax(1, tk.space(2));
+  const qreal inner = qMax<qreal>(4, ks - 2 * ring);
+  const QRectF k(knobCenter - inner / 2.0, track.y() + Paint::centered(track.height(), inner), inner, inner);
   // Under the pointer, while dragging or focused, the knob grows by 15%.
   if (isHot() || m_dragging || hasFocus()) {
     const QPointF c = k.center();
@@ -104,7 +118,7 @@ void Slider::paintEvent(QPaintEvent *) {
     p.scale(1.15, 1.15);
     p.translate(-c);
   }
-  Paint::surface(p, k, k.width() / 2, fg, Border::flat(surface, qMax(1, tk.space(2))));
+  Paint::surface(p, k, k.width() / 2, fg);
 }
 
 qreal Slider::valueAt(qreal x) const {

@@ -297,9 +297,9 @@ void Sidebar::paintEvent(QPaintEvent *) {
     const bool selected = m_selected == r.id, cursor = showCursor && m_cursor == r.id;
     Paint::surface(p, r.rect, tk.radius(), rowFill(tk, cursor, selected));
     const QColor ink = selected ? tk.selectedText() : tk.foreground();
-    const QSizeF gs = Paint::textSize(glyphFont, r.glyph);
-    Paint::text(p, QPointF(r.rect.x() + inset, r.rect.y() + Paint::centered(rh, gs.height())), glyphFont, selected ? ink : tk.textDim(),
-                r.glyph);
+    if (!r.glyph.isEmpty()) {
+      Paint::opticalGlyph(p, QRectF(r.rect.x() + inset, r.rect.y(), tk.fontSize("icon"), rh), glyphFont, selected ? ink : tk.textDim(), r.glyph);
+    }
     if (m_collapsed) continue;
     const QFont &f = selected ? bold : body;
     const qreal lh = Paint::lineHeight(f);

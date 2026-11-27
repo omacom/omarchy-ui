@@ -269,7 +269,6 @@ static void fillTopRounded(QPainter &p, const QRectF &r, qreal radius, const QCo
 void Tabs::paintEvent(QPaintEvent *) {
   const Tokens &tk = shown();
   QPainter p(this);
-  p.fillRect(QRectF(0, height() - 1, width(), 1), tk.track());
   for (int i = 0; i < m_model.size(); ++i) {
     const QRectF r = tabRect(i);
     const bool selected = i == m_current;
@@ -281,6 +280,7 @@ void Tabs::paintEvent(QPaintEvent *) {
     const QColor c = selected ? tk.selectedText() : hot ? tk.foreground() : tk.textDim();
     Paint::text(p, QPointF(r.x() + Paint::centered(r.width(), s.width()), r.y() + Paint::centered(r.height(), s.height())), f, c, m_model[i]);
   }
+  p.fillRect(QRectF(0, height() - 1, width(), 1), tk.track());
   if (m_current >= 0 && m_current < m_model.size()) {
     const QRectF bar = m_anim->state() == QAbstractAnimation::Running ? m_bar : tabRect(m_current);
     const qreal ul = tk.spacing("xxs");

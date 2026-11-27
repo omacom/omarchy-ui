@@ -146,6 +146,20 @@ void textIn(QPainter &p, const QRectF &r, int align, const QFont &font, const QC
   text(p, QPointF(x, y), font, color, shown);
 }
 
+void opticalGlyph(QPainter &p, const QRectF &box, const QFont &font, const QColor &color, const QString &s) {
+  if (s.isEmpty()) return;
+  constexpr int kScale = 100;
+  QFont bigFont = font;
+  bigFont.setPixelSize(qMax(1, font.pixelSize()) * kScale);
+  const QRectF big = QFontMetricsF(bigFont).tightBoundingRect(s);
+  const qreal inkX = big.x() / kScale;
+  const qreal inkW = big.width() / kScale;
+  const qreal x = inkW > 0 ? box.x() + box.width() / 2.0 - (inkX + qMax<qreal>(1.0, inkW) / 2.0)
+                           : box.x() + (box.width() - textWidth(font, s)) / 2.0;
+  const qreal y = box.y() + std::floor((box.height() - lineHeight(font)) / 2.0 + 0.5);
+  text(p, QPointF(x, y), font, color, s);
+}
+
 qreal wrappedHeight(const QFont &font, const QString &s, qreal width) {
   QTextLayout layout;
   layoutLine(layout, font, s, width, true);

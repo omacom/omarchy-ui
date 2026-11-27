@@ -168,11 +168,13 @@ qreal Hero::trailingInset() const {
 
 QSizeF Hero::implicitSize() const {
   const Tokens &tk = shown();
-  const QSizeF glyph = Paint::textSize(tk.font("display"), m_glyph);
+  const qreal slotW = m_glyph.isEmpty() ? 0 : tk.fontSize("display");
+  const qreal gap = m_glyph.isEmpty() ? 0 : tk.space(14);
+  const qreal glyphH = qMax<qreal>(tk.fontSize("displayLarge"), std::ceil(tk.fontSize("display") * 1.35));
   qreal labelsW = Paint::textWidth(tk.font("title", true), m_title);
   if (!m_status.isEmpty()) labelsW = qMax(labelsW, Paint::textWidth(statusFont(), m_status.toUpper()));
   const qreal th = m_trailing && !m_trailing->isHidden() ? m_trailing->sizeHint().height() : 0;
-  return QSizeF(glyph.width() + tk.space(14) + labelsW + trailingInset(), qMax(glyph.height(), qMax(labelsHeight(), th)));
+  return QSizeF(slotW + gap + labelsW + trailingInset(), qMax(glyphH, qMax(labelsHeight(), th)));
 }
 
 QSize Hero::sizeHint() const { return ceilSize(implicitSize()); }
@@ -195,13 +197,17 @@ void Hero::paintEvent(QPaintEvent *) {
   const Tokens &tk = shown();
   QPainter p(this);
   const QColor fg = m_fg.isValid() ? m_fg : tk.foreground();
-  const QFont glyphFont = tk.font("display");
-  const QSizeF glyph = Paint::textSize(glyphFont, m_glyph);
-  p.save();
-  p.setOpacity(m_glyphOpacity);
-  Paint::text(p, QPointF(0, Paint::centered(height(), glyph.height())), glyphFont, fg, m_glyph);
-  p.restore();
-  const qreal x = glyph.width() + tk.space(14);
+  const qreal slotW = m_glyph.isEmpty() ? 0 : tk.fontSize("display");
+  const qreal gap = m_glyph.isEmpty() ? 0 : tk.space(14);
+  if (!m_glyph.isEmpty()) {
+    const qreal glyphH = qMax<qreal>(tk.fontSize("displayLarge"), std::ceil(tk.fontSize("display") * 1.35));
+    const QRectF slot(0, Paint::centered(height(), glyphH), slotW, glyphH);
+    p.save();
+    p.setOpacity(m_glyphOpacity);
+    Paint::opticalGlyph(p, slot, tk.font("display"), fg, m_glyph);
+    p.restore();
+  }
+  const qreal x = slotW + gap;
   const qreal w = qMax<qreal>(0, width() - x - trailingInset());
   const qreal y = Paint::centered(height(), labelsHeight());
   const QFont title = tk.font("title", true);
@@ -471,10 +477,15 @@ void Avatar::paintEvent(QPaintEvent *) {
     return;
   }
   Paint::surface(p, r, radius(), tk.fill(State::Selected));
-  const QString mark = !m_glyph.isEmpty() ? m_glyph : initial(m_name);
-  const QFont f = tk.fontPx(std::round(px * 0.5), m_glyph.isEmpty());
-  const QSizeF s = Paint::textSize(f, mark);
-  Paint::text(p, r.topLeft() + QPointF(Paint::centered(px, s.width()), Paint::centered(px, s.height())), f, tk.foreground(), mark);
+  const int fontPx = int(std::round(px * 0.5));
+  if (!m_glyph.isEmpty()) {
+    Paint::opticalGlyph(p, r, tk.fontPx(fontPx), tk.foreground(), m_glyph);
+  } else {
+    const QString mark = initial(m_name);
+    const QFont f = tk.fontPx(fontPx, true);
+    const QSizeF s = Paint::textSize(f, mark);
+    Paint::text(p, r.topLeft() + QPointF(Paint::centered(px, s.width()), Paint::centered(px, s.height())), f, tk.foreground(), mark);
+  }
 }
 
 // The docked StatusDot overhangs the corner, so it is a sibling drawn over the avatar.
@@ -602,14 +613,43 @@ void TileGrid::rebuild() {
   update();
 }
 
+// Wrapped height of a tile label, capped at 2 lines (matching Text.Wrap + maximumLineCount: 2).
+static qreal tileLabelHeight(const QFont &font, const QString &text, qreal width) {
+  if (text.isEmpty()) return Paint::lineHeight(font);
+  QTextLayout layout(text, font);
+  QTextOption opt;
+  opt.setUseDesignMetrics(true);
+  opt.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+  layout.setTextOption(opt);
+  layout.beginLayout();
+  qreal y = 0;
+  int lines = 0;
+  for (;;) {
+    QTextLine line = layout.createLine();
+    if (!line.isValid()) break;
+    line.setLineWidth(qMax<qreal>(1, width));
+    line.setPosition(QPointF(0, y));
+    if (lines < 2) y += line.height();
+    ++lines;
+  }
+  layout.endLayout();
+  return lines > 0 ? y : Paint::lineHeight(font);
+}
+
 void TileGrid::place() {
-  const qreal md = shown().spacing("md");
+  const Tokens &tk = shown();
+  const qreal md = tk.spacing("md");
+  const QFont labelFont = tk.font("bodySmall");
+  const qreal iconH = iconHeight();
   for (int i = 0; i < m_avatars.size(); ++i) {
     Avatar *a = m_avatars[i];
     if (!a) continue;
     const QRectF tile = tileRect(i);
+    const qreal labelH = tileLabelHeight(labelFont, m_tiles[i].label, tile.width() - md * 2);
+    const qreal contentH = iconH + md + labelH;
+    const qreal contentY = tile.y() + std::floor((tile.height() - contentH) / 2.0 + 0.5);
     const qreal px = a->pixelSize();
-    a->setGeometryF(QRectF(tile.x() + Paint::centered(tile.width(), px), tile.y() + md + Paint::centered(iconHeight(), px), px, px));
+    a->setGeometryF(QRectF(tile.x() + Paint::centered(tile.width(), px), contentY + Paint::centered(iconH, px), px, px));
   }
 }
 
@@ -649,6 +689,7 @@ void TileGrid::paintEvent(QPaintEvent *) {
   const Tokens &tk = shown();
   QPainter p(this);
   const qreal md = tk.spacing("md");
+  const qreal iconH = iconHeight();
   const QFont glyphFont = tk.font("display");
   const QFont label = tk.font("bodySmall");
   for (int i = 0; i < m_tiles.size(); ++i) {
@@ -656,12 +697,14 @@ void TileGrid::paintEvent(QPaintEvent *) {
     const QRectF r = tileRect(i);
     if (i == m_cursor) Paint::surface(p, r, tk.radius(), tk.fill(State::Hover), tk.border(State::Hover));
     else if (i == m_current) Paint::surface(p, r, tk.radius(), tk.fill(State::Selected), tk.border(State::Selected));
+    const qreal innerW = r.width() - md * 2;
+    const qreal labelH = tileLabelHeight(label, t.label, innerW);
+    const qreal contentH = iconH + md + labelH;
+    const qreal contentY = r.y() + std::floor((r.height() - contentH) / 2.0 + 0.5);
     if (!t.avatar && !t.glyph.isEmpty()) {
-      const QSizeF s = Paint::textSize(glyphFont, t.glyph);
-      Paint::text(p, QPointF(r.x() + Paint::centered(r.width(), s.width()), r.y() + md + Paint::centered(iconHeight(), s.height())), glyphFont,
-                  tk.foreground(), t.glyph);
+      Paint::opticalGlyph(p, QRectF(r.x() + md, contentY, innerW, iconH), glyphFont, tk.foreground(), t.glyph);
     }
-    drawLabel(p, QRectF(r.x() + md, r.y() + md + iconHeight() + md, r.width() - md * 2, Paint::lineHeight(label) * 2), label, tk.foreground(), t.label);
+    drawLabel(p, QRectF(r.x() + md, contentY + iconH + md, innerW, labelH), label, tk.foreground(), t.label);
   }
 }
 

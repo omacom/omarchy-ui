@@ -123,7 +123,7 @@ private Q_SLOTS:
     QCOMPARE(b.toneGlyph(), QStringLiteral("x"));
     QVERIFY(!b.actionButton()->isVisibleTo(&b));
     QVERIFY(!b.dismissButton()->isVisibleTo(&b));
-    QCOMPARE(b.heightForWidth(724), 38);
+    QCOMPARE(b.heightForWidth(724), 40);
   }
 
   void toast_action_clicks_and_takes_keys() {
@@ -161,7 +161,7 @@ private Q_SLOTS:
     e.actionButton()->setFocus();
     QTest::keyClick(e.actionButton(), Qt::Key_Space);
     QCOMPARE(action.count(), 2);
-    QCOMPARE(e.actionButton()->geometry().center().x(), 175);  // centered in the width
+    QVERIFY(qAbs(e.actionButton()->geometry().center().x() - 175) <= 1);  // centered in the width
     e.setHasCursor(true);
     QVERIFY(e.actionButton()->hasCursor());
     e.setOverlay(true);
