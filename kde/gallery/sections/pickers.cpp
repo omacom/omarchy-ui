@@ -47,7 +47,7 @@ void build(Column *body, QWidget *parent) {
 
   // A Dialog held open over the card it would cover, so the scrim shows.
   auto *stage = new QWidget;
-  stage->setFixedSize(420, 200);
+  stage->setFixedSize(420, 240);
   auto *card = new Card(QStringLiteral("Displays"), stage);
   card->setGeometry(stage->rect());
   auto *rows = new QWidget;

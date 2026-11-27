@@ -88,9 +88,9 @@ void Slider::paintEvent(QPaintEvent *) {
   const bool mirrored = layoutDirection() == Qt::RightToLeft;
   const qreal fw = track.width() * frac;
   Paint::surface(p, QRectF(mirrored ? track.right() - fw : track.x(), track.y(), fw, track.height()), radius, fg);
-  if (m_ticks > 1) {
+  if (m_ticks > 2) {
     const qreal nw = qMax(1, tk.space(2)), nh = track.height() + tk.space(4);
-    for (int i = 0; i < m_ticks; ++i) {
+    for (int i = 1; i < m_ticks - 1; ++i) {
       const qreal f = qreal(i) / (m_ticks - 1);
       const qreal x = track.x() + track.width() * (mirrored ? 1 - f : f);
       Paint::surface(p, QRectF(x - nw / 2, track.y() + Paint::centered(track.height(), nh), nw, nh), 1, surface);

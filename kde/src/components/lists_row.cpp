@@ -322,7 +322,7 @@ void ListRow::paintEvent(QPaintEvent *) {
     if (m_actionCursor && enabled) {
       const QColor ink = m_actionUrgent ? tk.urgent() : fg;
       const Border hb = tk.border(State::Hover);
-      Paint::surface(p, slot, tk.radius(), Paint::alpha(ink, tk.fill(State::Hover).alphaF()),
+      Paint::surface(p, slot, tk.smallRadius(), Paint::alpha(ink, tk.fill(State::Hover).alphaF()),
                      Border::flat(Paint::alpha(ink, hb.color.alphaF()), hb.top));
     }
     const QFont f = tk.font("subtitle");

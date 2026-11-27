@@ -524,7 +524,7 @@ void ConfirmDialog::paintEvent(QPaintEvent *) {
     const QColor fill = selected ? (destructive ? Paint::alpha(urgent, 0.22) : Paint::alpha(fg, 0.08)) : QColor(Qt::transparent);
     const QColor line = destructive ? (selected ? urgent : Paint::alpha(urgent, 0.56)) : (selected ? accent : Paint::alpha(fg, 0.38));
     const QRect r = buttonRect(i);
-    Paint::surface(p, QRectF(r), 0, fill, Border::flat(line, bw));
+    Paint::surface(p, QRectF(r), tk.radius(), fill, Border::flat(line, bw));
     const QFont f = tk.font("caption");
     const QSizeF s = Paint::textSize(f, labels[i]);
     const QColor text = destructive ? (selected ? urgent : fg) : (selected ? accent : fg);

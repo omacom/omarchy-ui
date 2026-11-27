@@ -357,8 +357,9 @@ void Timeline::paintEvent(QPaintEvent *) {
       const Border border = sel ? Border::flat(tk.accent(), qMax(1, tk.space(2))) : tk.border(hover ? State::Hover : State::Normal);
       Paint::surface(p, r, small, fill, border);
       const QFont &f = sel ? bold : label;
-      const qreal lw = qMax(0.0, r.width() - px * 2);
-      Paint::text(p, QPointF(r.x() + px, r.y() + Paint::centered(r.height(), Paint::lineHeight(f))), f, tk.foreground(),
+      const qreal inset = sel ? tk.space(8) + tk.spacing("md") : px;
+      const qreal lw = qMax(0.0, r.width() - inset * 2);
+      Paint::text(p, QPointF(r.x() + inset, r.y() + Paint::centered(r.height(), Paint::lineHeight(f))), f, tk.foreground(),
                   Paint::elided(f, m_tracks[tr][c].label, lw));
       if (sel) {
         for (TrimHandle *h : {m_left, m_right})

@@ -471,7 +471,7 @@ void Dropdown::paintEvent(QPaintEvent *) {
   const QString chev = QString::fromUcs4(U"\U000F0140", 1);
   const QSizeF cs = Paint::textSize(f, chev);
   const qreal cx = r.right() - b.right - tk.spacing("controlGap") - cs.width();
-  Paint::text(p, QPointF(cx, r.y() + Paint::centered(r.height(), cs.height())), f, Paint::darker(fg, 1.2), chev);
+  Paint::text(p, QPointF(cx, r.y() + Paint::centered(r.height(), cs.height())), f, tk.textDim(), chev);
   const qreal lx = r.x() + b.left + tk.spacing("controlPaddingX");
   const qreal lh = Paint::lineHeight(f);
   Paint::textIn(p, QRectF(lx, r.y() + Paint::centered(r.height(), lh), cx - tk.spacing("md") - lx, lh), Qt::AlignLeft | Qt::AlignTop, f, fg, currentLabel());

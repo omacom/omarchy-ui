@@ -405,8 +405,10 @@ QDate Calendar::dayAt(const QPointF &pos) const {
 
 void Calendar::placeButtons() {
   const int s = headerHeight();
-  m_prev->setGeometry(0, 0, s, s);
-  m_next->setGeometry(gridWidth() - s, 0, s, s);
+  const int cw = cellWidth();
+  const int inset = int(std::floor((cw - s) / 2.0 + 0.5));
+  m_prev->setGeometry(inset, 0, s, s);
+  m_next->setGeometry(gridWidth() - cw + inset, 0, s, s);
 }
 
 void Calendar::resizeEvent(QResizeEvent *e) {

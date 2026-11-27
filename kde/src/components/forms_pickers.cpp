@@ -370,7 +370,7 @@ void Dialog::paintEvent(QPaintEvent *) {
     const QColor line = urgentButton ? (selected ? urgent : Paint::alpha(urgent, 0.56)) : (selected ? selText : Paint::alpha(fg, 0.38));
     const QColor text = urgentButton ? (selected ? urgent : fg) : (selected ? selText : fg);
     const QRectF r = buttonRect(i);
-    Paint::surface(p, r, 0, fill, Border::flat(line, bw));
+    Paint::surface(p, r, tk.radius(), fill, Border::flat(line, bw));
     const QSizeF s = Paint::textSize(f, labels[i]);
     Paint::text(p, QPointF(r.x() + Paint::centered(r.width(), s.width()), r.y() + Paint::centered(r.height(), s.height())), f, text, labels[i]);
   }
