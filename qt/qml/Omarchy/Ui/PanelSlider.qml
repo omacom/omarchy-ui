@@ -11,7 +11,7 @@ Item {
   property real maximum: 1
   property real step: 0.05
   property bool integer: false
-  property color trackColor: bar ? Style.selectedFillFor(bar.foreground, Commons.Color.accent) : "#333"
+  property color trackColor: bar ? Style.selectedFillFor(bar.foreground, Commons.Color.accent) : Style.selectedFillFor(Commons.Color.foreground, Commons.Color.accent)
   property color fillColor: bar ? bar.foreground : Commons.Color.foreground
   property color knobColor: bar ? bar.foreground : Commons.Color.foreground
   property bool dragging: false
@@ -48,7 +48,11 @@ Item {
     return track.x + track.width * (root.mirrored ? 1 - fraction : fraction)
   }
 
-  Rectangle {
+  readonly property real _ring: Math.max(1, Style.space(2))
+  readonly property real _innerKnob: Math.max(4, knobSize - _ring * 2)
+  readonly property real _knobCenter: trackX(progress)
+
+  Item {
     id: track
     anchors.verticalCenter: parent.verticalCenter
     anchors.left: parent.left
@@ -56,47 +60,68 @@ Item {
     anchors.leftMargin: root.knobSize / 2
     anchors.rightMargin: root.knobSize / 2
     height: root.trackHeight
-    radius: height / 2
-    color: root.trackColor
+  }
+
+  // Split the track around the knob with a true transparent gap of `_ring`, so
+  // the slider sits cleanly on any surface (window, glass Pane, hovered row)
+  // without painting an opaque background-colored cutout halo.
+  Rectangle {
+    id: fill
+    readonly property real _end: root.mirrored
+      ? track.x + track.width
+      : Math.max(track.x, Math.min(track.x + track.width, root._knobCenter - root.knobSize / 2))
+    readonly property real _start: root.mirrored
+      ? Math.min(track.x + track.width, Math.max(track.x, root._knobCenter + root.knobSize / 2))
+      : track.x
+    anchors.verticalCenter: track.verticalCenter
+    x: _start
+    width: Math.max(0, _end - _start)
+    visible: width > 0
+    height: track.height
+    radius: track.height / 2
+    color: root.fillColor
   }
 
   Rectangle {
-    id: fill
+    id: unfilledTrack
+    readonly property real _start: root.mirrored
+      ? track.x
+      : Math.min(track.x + track.width, Math.max(track.x, root._knobCenter + root.knobSize / 2))
+    readonly property real _end: root.mirrored
+      ? Math.max(track.x, Math.min(track.x + track.width, root._knobCenter - root.knobSize / 2))
+      : track.x + track.width
     anchors.verticalCenter: track.verticalCenter
-    anchors.left: track.left
+    x: _start
+    width: Math.max(0, _end - _start)
+    visible: width > 0
     height: track.height
-    radius: track.radius
-    color: root.fillColor
-    width: track.width * root.progress
-
-    Behavior on width {
-      enabled: !root.dragging
-      NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic }
-    }
+    radius: track.height / 2
+    color: root.trackColor
   }
 
   Repeater {
     model: root.tickCount > 2 ? root.tickCount - 2 : 0
     Rectangle {
       required property int index
+      readonly property real _cx: root.trackX((index + 1) / (root.tickCount - 1))
+      visible: Math.abs(_cx - root._knobCenter) > root.knobSize / 2
       width: Math.max(1, Style.space(2))
       height: root.trackHeight + Style.space(4)
       radius: 1
       color: root.tickColor
       anchors.verticalCenter: track.verticalCenter
-      x: root.trackX((index + 1) / (root.tickCount - 1)) - width / 2
+      x: _cx - width / 2
     }
   }
 
-  BorderSurface {
+  Rectangle {
     id: knob
-    width: root.knobSize
-    height: root.knobSize
-    radius: root.knobSize / 2
+    width: root._innerKnob
+    height: root._innerKnob
+    radius: width / 2
     color: root.knobColor
-    borderSpec: Border.flat(root.bar ? root.bar.background : "#101315", Math.max(1, Style.space(2)))
     anchors.verticalCenter: track.verticalCenter
-    x: root.trackX(root.progress) - width / 2
+    x: root._knobCenter - width / 2
     scale: root._hot ? 1.15 : 1.0
 
     Behavior on x {

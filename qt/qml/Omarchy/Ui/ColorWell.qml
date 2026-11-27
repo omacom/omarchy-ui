@@ -34,7 +34,7 @@ Item {
     anchors.fill: parent
     visible: root._hot
     color: "transparent"
-    radius: root._radius
+    radius: root._radius > 0 ? Math.min(Style.cornerRadius, root._radius + root.ringPad) : 0
     borderSpec: Border.controlSpec("hover-cursor", root.foreground, root.accent)
   }
 
@@ -55,7 +55,7 @@ Item {
       readonly property int inset: Border.top(well.borderSpec) + Style.spacing.xxs
       anchors.fill: parent
       anchors.margins: inset
-      radius: Math.max(0, well.radius - Style.spacing.xxs)
+      radius: Math.max(0, well.radius - inset)
       color: root.swatch
     }
   }

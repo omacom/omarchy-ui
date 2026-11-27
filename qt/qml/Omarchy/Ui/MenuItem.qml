@@ -98,7 +98,7 @@ Rectangle {
     visible: root.shortcut !== ""
     anchors.right: parent.right
     anchors.rightMargin: root._padX + (root.reserveMark ? root._markBox + root._gap : 0)
-    anchors.verticalCenter: parent.verticalCenter
+    anchors.baseline: label.baseline
     textFormat: Text.PlainText
     text: root.shortcut
     color: root.enabled ? Commons.Color.textDim : Commons.Color.textFaint
@@ -108,13 +108,24 @@ Rectangle {
 
   OpticalGlyph {
     readonly property bool mark: root.checkable && root.checked
-    visible: mark || root.hasSubmenu
+    visible: (mark && !root.exclusive) || root.hasSubmenu
     x: root.width - root._padX - root._markBox
     width: root._markBox
     height: root.height
-    text: mark ? (root.exclusive ? "●" : "✓") : ""
-    fontSize: mark ? (root.exclusive ? Style.font.caption : Style.font.body) : Style.font.iconSmall
+    text: mark ? "✓" : ""
+    fontSize: mark ? Style.font.body : Style.font.iconSmall
     color: !root.enabled ? Commons.Color.textFaint : mark ? Commons.Color.accent : Commons.Color.textDim
+  }
+
+  Rectangle {
+    readonly property int dot: Style.space(6)
+    visible: root.checkable && root.checked && root.exclusive
+    x: root.width - root._padX - root._markBox + Math.round((root._markBox - dot) / 2)
+    anchors.verticalCenter: parent.verticalCenter
+    width: dot
+    height: dot
+    radius: dot / 2
+    color: !root.enabled ? Commons.Color.textFaint : Commons.Color.accent
   }
 
   MouseArea {

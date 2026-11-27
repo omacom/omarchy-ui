@@ -107,14 +107,13 @@ FocusScope {
                 : (rowItem.isSelected ? Style.selectedFillFor(root.foreground, root.accent) : "transparent")
             }
 
-            Text {
+            OpticalGlyph {
               x: root.rowInset
-              anchors.verticalCenter: parent.verticalCenter
-              textFormat: Text.PlainText
+              width: Style.font.icon
+              height: parent.height
               text: rowItem.modelData.glyph || ""
               color: rowItem.isSelected ? rowItem.ink : Commons.Color.textDim
-              font.family: Style.font.family
-              font.pixelSize: Style.font.icon
+              fontSize: Style.font.icon
             }
 
             Text {

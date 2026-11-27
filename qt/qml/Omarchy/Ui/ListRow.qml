@@ -120,16 +120,16 @@ CursorSurface {
       anchors.left: parent.left
       anchors.verticalCenter: parent.verticalCenter
 
-      Text {
+      OpticalGlyph {
         id: leadGlyph
         visible: root.leading === null && root.glyph !== ""
-        // Centered by its box (advance plus any overhang), as the Rune binding's glyphs are.
-        x: Math.round((Style.font.iconLarge - implicitWidth) / 2)
-        textFormat: Text.PlainText
+        x: 0
+        width: Style.font.iconLarge
+        height: Math.max(Style.font.iconLarge, Math.ceil(root.glyphSize * 1.35))
+        implicitHeight: height
         text: root.glyph
         color: root.disabled ? Commons.Color.textFaint : root.glyphColor
-        font.family: Style.font.family
-        font.pixelSize: root.glyphSize
+        fontSize: root.glyphSize
         anchors.verticalCenter: parent.verticalCenter
       }
 
@@ -210,24 +210,20 @@ CursorSurface {
           radius: Math.min(4, Style.cornerRadius)
         }
 
-        Text {
+        OpticalGlyph {
           visible: root.actionShown
-          anchors.centerIn: parent
-          textFormat: Text.PlainText
+          anchors.fill: parent
           text: root.actionGlyph
           color: root.actionUrgent ? Commons.Color.urgent : Commons.Color.textDim
-          font.family: Style.font.family
-          font.pixelSize: Style.font.subtitle
+          fontSize: Style.font.subtitle
         }
 
-        Text {
+        OpticalGlyph {
           visible: root.trailingGlyph !== "" && !root.actionShown
-          anchors.centerIn: parent
-          textFormat: Text.PlainText
+          anchors.fill: parent
           text: root.trailingGlyph
           color: root.toneColor(root.trailingTone)
-          font.family: Style.font.family
-          font.pixelSize: Style.font.subtitle
+          fontSize: Style.font.subtitle
         }
 
         MouseArea {

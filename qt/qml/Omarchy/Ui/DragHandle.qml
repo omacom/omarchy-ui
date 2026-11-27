@@ -32,8 +32,7 @@ Item {
     id: grip
     columns: 2
     spacing: root.dotGap
-    x: Math.round((root.width - (root.dot * 2 + root.dotGap)) / 2)
-    y: Math.round((root.height - (root.dot * 3 + root.dotGap * 2)) / 2)
+    anchors.centerIn: parent
     Repeater {
       model: 6
       Rectangle {

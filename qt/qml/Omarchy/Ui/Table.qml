@@ -215,7 +215,10 @@ FocusScope {
       }
 
       Rectangle {
+        readonly property bool nextHighlighted: (root.selectedRow === rowItem.index + 1)
+          || (root._showCursor && root.cursorRow === rowItem.index + 1)
         visible: root.separators && rowItem.index < root.rows.length - 1
+          && !rowItem.isSelected && !rowItem.isCursor && !nextHighlighted
         anchors.bottom: parent.bottom
         width: parent.width
         height: Style.spacing.hairline

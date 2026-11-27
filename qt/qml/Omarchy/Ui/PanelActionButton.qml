@@ -90,9 +90,11 @@ BorderSurface {
       iconMetrics.tightBoundingRect.width / root._metricsScale,
       iconMetrics.tightBoundingRect.height / root._metricsScale)
     readonly property bool _hasInk: _ink.width > 0 && _ink.height > 0
-    // Center optical ink bounds, snapped to whole pixels for crisp edges.
+    // Center horizontally by optical ink bounds and vertically on the line box
+    // (Qt's tightBoundingRect unions with y=0, which shifts glyphs above the
+    // baseline like U+F141 upward by 2pt).
     x: _hasInk ? Math.round(root.width / 2 - (_ink.x + _ink.width / 2)) : Math.round((root.width - width) / 2)
-    y: _hasInk ? Math.round(root.height / 2 - (baselineOffset + _ink.y + _ink.height / 2)) : Math.round((root.height - height) / 2)
+    y: Math.round((root.height - height) / 2)
     text: root.iconText
     color: root.enabled
       ? (root._hot ? root.hoverColor : root.foreground)

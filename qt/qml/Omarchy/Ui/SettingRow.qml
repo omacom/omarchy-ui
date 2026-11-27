@@ -25,7 +25,7 @@ Item {
   readonly property int _padY: Style.spacing.md
 
   implicitWidth: Style.space(240)
-  implicitHeight: Math.max(Style.spacing.controlHeight, words.implicitHeight, trailing.implicitHeight) + _padY * 2
+  implicitHeight: Math.max(Style.spacing.controlHeight + _padY * 2, words.implicitHeight + _padY * 2, trailing.implicitHeight + Style.spacing.xxs * 2)
 
   Rectangle {
     anchors.fill: parent

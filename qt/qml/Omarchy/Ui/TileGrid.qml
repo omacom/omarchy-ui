@@ -50,46 +50,48 @@ Grid {
       hasCursor: root.cursorIndex === index
       current: root.currentIndex === index
 
-      Item {
-        id: iconBox
-        x: 0
-        y: root.tilePadding
-        width: parent.width
-        height: root.iconHeight
+      Column {
+        id: content
+        x: root.tilePadding
+        y: Math.round((parent.height - height) / 2)
+        width: parent.width - root.tilePadding * 2
+        spacing: Style.spacing.md
+
+        Item {
+          id: iconBox
+          width: parent.width
+          height: root.iconHeight
+
+          OpticalGlyph {
+            visible: !tile.avatared
+            anchors.fill: parent
+            text: tile.entry.glyph || ""
+            fontSize: Style.font.display
+            color: Commons.Color.foreground
+          }
+
+          Avatar {
+            visible: tile.avatared
+            anchors.centerIn: parent
+            size: "medium"
+            name: tile.entry.name || tile.entry.label || ""
+            source: tile.entry.source || ""
+            glyph: tile.avatared ? (tile.entry.glyph || "") : ""
+          }
+        }
 
         Text {
-          visible: !tile.avatared
-          anchors.centerIn: parent
+          width: parent.width
           textFormat: Text.PlainText
-          text: tile.entry.glyph || ""
+          text: tile.entry.label || ""
           color: Commons.Color.foreground
           font.family: Style.font.family
-          font.pixelSize: Style.font.display
+          font.pixelSize: Style.font.bodySmall
+          horizontalAlignment: Text.AlignHCenter
+          wrapMode: Text.Wrap
+          maximumLineCount: 2
+          elide: Text.ElideRight
         }
-
-        Avatar {
-          visible: tile.avatared
-          anchors.centerIn: parent
-          size: "medium"
-          name: tile.entry.name || tile.entry.label || ""
-          source: tile.entry.source || ""
-          glyph: tile.avatared ? (tile.entry.glyph || "") : ""
-        }
-      }
-
-      Text {
-        x: root.tilePadding
-        y: iconBox.y + iconBox.height + Style.spacing.md
-        width: parent.width - root.tilePadding * 2
-        textFormat: Text.PlainText
-        text: tile.entry.label || ""
-        color: Commons.Color.foreground
-        font.family: Style.font.family
-        font.pixelSize: Style.font.bodySmall
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.Wrap
-        maximumLineCount: 2
-        elide: Text.ElideRight
       }
 
       MouseArea {

@@ -75,8 +75,8 @@ BorderSurface {
   // narrows the label when the button is held narrower than that.
   // Height follows the label's line box when a label is present so an icon
   // button matches text-only sibling buttons in the same row.
-  implicitWidth: _contentNaturalWidth + horizontalPadding * 2 + _reservedBorderLeft + _reservedBorderRight
-  implicitHeight: (root.text !== "" ? label.implicitHeight : iconGlyph.implicitHeight) + verticalPadding * 2 + _reservedBorderTop + _reservedBorderBottom
+  implicitWidth: Math.ceil(_contentNaturalWidth) + horizontalPadding * 2 + _reservedBorderLeft + _reservedBorderRight
+  implicitHeight: Math.ceil(root.text !== "" ? label.implicitHeight : iconGlyph.implicitHeight) + verticalPadding * 2 + _reservedBorderTop + _reservedBorderBottom
   radius: Style.cornerRadius
 
   readonly property bool hot: mouseArea.containsMouse || hasCursor

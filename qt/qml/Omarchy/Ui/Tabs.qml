@@ -41,13 +41,6 @@ FocusScope {
     event.accepted = true
   }
 
-  Rectangle {
-    y: root.height - 1
-    width: root.width
-    height: 1
-    color: Commons.Color.track
-  }
-
   Row {
     id: tabRow
     spacing: Style.spacing.xxs
@@ -94,6 +87,13 @@ FocusScope {
         }
       }
     }
+  }
+
+  Rectangle {
+    y: root.height - 1
+    width: root.width
+    height: 1
+    color: Commons.Color.track
   }
 
   Rectangle {

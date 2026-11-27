@@ -96,7 +96,7 @@ Item {
               readonly property bool selected: root.selectedIndex === index
               readonly property bool destructive: index === 1
 
-              width: Style.space(88)
+              width: Math.max(Style.space(88), Math.ceil(btnLabel.implicitWidth) + Style.spacing.controlPaddingX * 2)
               height: Style.space(34)
               color: selected
                 ? (destructive ? Util.alpha(Commons.Color.urgent, 0.22) : root.selectedBackground)
@@ -107,6 +107,7 @@ Item {
               radius: root.cornerRadius
 
               Text {
+                id: btnLabel
                 textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: modelData

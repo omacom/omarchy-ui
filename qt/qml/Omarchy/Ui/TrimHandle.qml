@@ -71,7 +71,11 @@ Item {
     }
   }
 
-  // ---- crop handle: a bar, or two bars meeting in a corner
+  // ---- crop handle: a bar, or two bars meeting in a corner.
+  // Outer edges flush against the 1px crop border stay square at r8 so they
+  // don't pull away into pinched undercut notches.
+
+  readonly property real _cropRadius: Math.min(root.smallRadius, root.thickness / 2)
 
   Rectangle {
     visible: root.crop
@@ -79,7 +83,10 @@ Item {
     y: root.corner && root.edge.indexOf("bottom") === 0 ? root.height - height : 0
     width: root.corner || root.horizontalBar ? root.width : root.thickness
     height: root.corner || root.horizontalBar ? root.thickness : root.height
-    radius: Math.min(root.smallRadius, root.thickness / 2)
+    topLeftRadius: (root.edge === "bottom" || root.edge === "right" || root.edge === "bottom-right") ? root._cropRadius : 0
+    topRightRadius: (root.edge === "bottom" || root.edge === "left" || root.edge === "bottom-left") ? root._cropRadius : 0
+    bottomLeftRadius: (root.edge === "top" || root.edge === "right" || root.edge === "top-right") ? root._cropRadius : 0
+    bottomRightRadius: (root.edge === "top" || root.edge === "left" || root.edge === "top-left") ? root._cropRadius : 0
     color: root.drawColor
   }
   Rectangle {
@@ -88,7 +95,10 @@ Item {
     y: 0
     width: root.thickness
     height: root.height
-    radius: Math.min(root.smallRadius, root.thickness / 2)
+    topLeftRadius: root.edge === "bottom-right" ? root._cropRadius : 0
+    topRightRadius: root.edge === "bottom-left" ? root._cropRadius : 0
+    bottomLeftRadius: root.edge === "top-right" ? root._cropRadius : 0
+    bottomRightRadius: root.edge === "top-left" ? root._cropRadius : 0
     color: root.drawColor
   }
 

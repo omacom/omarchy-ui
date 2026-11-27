@@ -145,7 +145,7 @@ Tone glyphs: info `󰋽` (U+F02FD), success `󰄬` (U+F012C), warning `󰀪` (U+
 | Border | `max(1, normal border width)`, the tone color |
 | Corners | `radius` |
 | Padding | `controlPaddingX` (10) start; end `sm` (4) with an action or dismiss, else `controlPaddingX`; `sm` top and bottom |
-| Min height | `controlHeight` (28) inside the padding |
+| Min height | `max(controlHeight, bordered button height)` (30 at scale 1) inside the padding so action and dismiss-only banners match |
 | Glyph | `icon` (14), tone color |
 | Text | `body`, `foreground` |
 | Gaps | `controlGap` (8) |
@@ -179,7 +179,7 @@ Qt `Toast`, Rune `Toast`. A transient message inside the app, drawn on the `noti
 | Padding | `space(12)` × `space(10)` inside the border |
 | Glyph | `iconLarge` (18), `notifications.text`, `space(12)` before the text |
 | Title | `body` bold, `notifications.text` |
-| Text | `body`, `notifications.text` darker 1.15 (the shell's body color), `space(3)` under the title |
+| Text | `body`, `notifications.text` at 78% opacity (dims cleanly on dark and light themes), `space(3)` under the title |
 | Action | Button, bordered, `space(12)` after the text |
 | Countdown | `max(1, space(2))` tall along the inner bottom edge, inset `radius` from each side, `notifications.countdown`, `countdown ×` that width from the leading edge |
 

@@ -61,31 +61,45 @@ Item {
     width: total.x - Style.spacing.controlGap - x
     height: root.height
 
-    Rectangle {
+    readonly property real _ring: Math.max(1, Style.space(2))
+    readonly property real _innerKnob: Math.max(4, root.knobSize - _ring * 2)
+    readonly property real _knobCenter: track.x + Math.round(track.width * root.progress)
+
+    Item {
       id: track
       x: root.knobSize / 2
       width: bar.width - root.knobSize
       height: root.trackHeight
       anchors.verticalCenter: parent.verticalCenter
-      radius: height / 2
+    }
+    Rectangle {
+      readonly property real _w: Math.max(0, Math.min(track.width, bar._knobCenter - root.knobSize / 2 - track.x))
+      x: track.x
+      width: _w
+      visible: _w > 0
+      height: track.height
+      anchors.verticalCenter: parent.verticalCenter
+      radius: track.height / 2
+      color: Commons.Color.foreground
+    }
+    Rectangle {
+      readonly property real _start: Math.min(track.x + track.width, Math.max(track.x, bar._knobCenter + root.knobSize / 2))
+      readonly property real _w: Math.max(0, track.x + track.width - _start)
+      x: _start
+      width: _w
+      visible: _w > 0
+      height: track.height
+      anchors.verticalCenter: parent.verticalCenter
+      radius: track.height / 2
       color: Commons.Color.track
     }
     Rectangle {
-      x: track.x
-      width: Math.round(track.width * root.progress)
-      height: track.height
-      anchors.verticalCenter: parent.verticalCenter
-      radius: track.radius
-      color: Commons.Color.foreground
-    }
-    BorderSurface {
-      width: root.knobSize
-      height: root.knobSize
-      radius: root.knobSize / 2
-      x: track.x + Math.round(track.width * root.progress) - width / 2
+      width: bar._innerKnob
+      height: bar._innerKnob
+      radius: width / 2
+      x: bar._knobCenter - width / 2
       anchors.verticalCenter: parent.verticalCenter
       color: Commons.Color.foreground
-      borderSpec: Border.flat(root.surfaceColor, Math.max(1, Style.space(2)))
       scale: root.hot ? 1.15 : 1.0
       Behavior on scale { NumberAnimation { duration: Style.duration(110); easing.type: Easing.OutCubic } }
     }
