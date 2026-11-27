@@ -297,9 +297,9 @@ void Sidebar::paintEvent(QPaintEvent *) {
     const bool selected = m_selected == r.id, cursor = showCursor && m_cursor == r.id;
     Paint::surface(p, r.rect, tk.radius(), rowFill(tk, cursor, selected));
     const QColor ink = selected ? tk.selectedText() : tk.foreground();
-    const QSizeF gs = Paint::textSize(glyphFont, r.glyph);
-    Paint::text(p, QPointF(r.rect.x() + inset, r.rect.y() + Paint::centered(rh, gs.height())), glyphFont, selected ? ink : tk.textDim(),
-                r.glyph);
+    if (!r.glyph.isEmpty()) {
+      Paint::opticalGlyph(p, QRectF(r.rect.x() + inset, r.rect.y(), tk.fontSize("icon"), rh), glyphFont, selected ? ink : tk.textDim(), r.glyph);
+    }
     if (m_collapsed) continue;
     const QFont &f = selected ? bold : body;
     const qreal lh = Paint::lineHeight(f);
@@ -405,8 +405,10 @@ QDate Calendar::dayAt(const QPointF &pos) const {
 
 void Calendar::placeButtons() {
   const int s = headerHeight();
-  m_prev->setGeometry(0, 0, s, s);
-  m_next->setGeometry(gridWidth() - s, 0, s, s);
+  const int cw = cellWidth();
+  const int inset = int(std::floor((cw - s) / 2.0 + 0.5));
+  m_prev->setGeometry(inset, 0, s, s);
+  m_next->setGeometry(gridWidth() - cw + inset, 0, s, s);
 }
 
 void Calendar::resizeEvent(QResizeEvent *e) {

@@ -22,12 +22,7 @@ void glyphByInk(QPainter &p, const QRectF &box, const QString &text, qreal fontS
   if (text.isEmpty()) return;
   const Tokens &tk = shown();
   const int px = qMax(1, int(std::lround(fontSize)));
-  const QFont f = tk.fontPx(px);
-  const QRectF big = QFontMetricsF(tk.fontPx(px * 100)).tightBoundingRect(text);
-  const qreal inkX = big.x() / 100, inkW = qMax<qreal>(1, big.width() / 100);
-  const qreal x = box.x() + box.width() / 2 - (inkX + inkW / 2);
-  const qreal y = box.y() + std::floor((box.height() - Paint::lineHeight(f)) / 2 + 0.5);
-  Paint::text(p, QPointF(x, y), f, color, text);
+  Paint::opticalGlyph(p, box, tk.fontPx(px), color, text);
 }
 
 int ceilPx(qreal v) { return int(std::ceil(v - 1e-6)); }
@@ -146,21 +141,28 @@ void MenuItem::paintEvent(QPaintEvent *) {
 
   const QFont body = tk.font("body");
   const qreal lx = r.x() + pad + (reserveIcon() ? box + gap : 0);
-  Paint::text(p, QPointF(lx, r.y() + Paint::centered(r.height(), Paint::lineHeight(body))), body, ink, m_text);
+  const qreal labelY = r.y() + Paint::centered(r.height(), Paint::lineHeight(body));
+  Paint::text(p, QPointF(lx, labelY), body, ink, m_text);
 
   if (!m_shortcut.isEmpty()) {
     const QFont small = tk.font("bodySmall");
     const QSizeF s = Paint::textSize(small, m_shortcut);
     const qreal right = pad + (reserveMark() ? box + gap : 0);
-    Paint::text(p, QPointF(r.right() - right - s.width(), r.y() + Paint::centered(r.height(), s.height())), small,
+    const qreal hintY = labelY + Paint::ascent(body) - Paint::ascent(small);
+    Paint::text(p, QPointF(r.right() - right - s.width(), hintY), small,
                 enabled ? tk.textDim() : tk.textFaint(), m_shortcut);
   }
 
   const bool mark = m_checkable && m_checked;
-  if (mark || hasSubmenu()) {
+  if (mark && m_exclusive) {
     const QRectF markBox(r.right() - pad - box, r.y(), box, r.height());
-    const QString g = mark ? (m_exclusive ? QStringLiteral("●") : QStringLiteral("✓")) : QString(QChar(0xF054));
-    const int size = mark ? (m_exclusive ? tk.fontSize("caption") : tk.fontSize("body")) : tk.fontSize("iconSmall");
+    const qreal dot = tk.space(6);
+    const QRectF dotRect(markBox.x() + std::floor((box - dot) / 2.0 + 0.5), r.y() + Paint::centered(r.height(), dot), dot, dot);
+    Paint::surface(p, dotRect, dot / 2.0, enabled ? tk.accent() : tk.textFaint());
+  } else if (mark || hasSubmenu()) {
+    const QRectF markBox(r.right() - pad - box, r.y(), box, r.height());
+    const QString g = mark ? QStringLiteral("✓") : QString(QChar(0xF054));
+    const int size = mark ? tk.fontSize("body") : tk.fontSize("iconSmall");
     glyphByInk(p, markBox, g, size, !enabled ? tk.textFaint() : mark ? tk.accent() : tk.textDim());
   }
 }

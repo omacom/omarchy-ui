@@ -85,18 +85,36 @@ pub(crate) fn reserve(looks: &[&BorderSpec]) -> [f32; 4] {
 /// the shell's state ladder does rather than stacking on it. `base` is the laid-out container
 /// without children.
 pub(crate) fn chrome(t: &Theme, base: El, children: Vec<El>, rest: &Look, hot: &Look, forced: bool, radius: f32) -> El {
+    chrome_corners(t, base, children, rest, hot, forced, [radius; 4])
+}
+
+/// Like [`chrome`], with per-corner radii `[top-left, top-right, bottom-right, bottom-left]`.
+pub(crate) fn chrome_corners(t: &Theme, base: El, children: Vec<El>, rest: &Look, hot: &Look, forced: bool, corners: [f32; 4]) -> El {
     let layer = |look: &Look| {
-        let e = el().pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).radius(radius).fill(color(look.fill));
+        let e = el().pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).corners(corners).fill(color(look.fill));
         border(e, &look.border)
     };
     let pressed = color(t.tokens().controls.pressed.fill);
-    let base = base.hover_group_focus().radius(radius).press(pressed);
+    let base = base.hover_group_focus().corners(corners).press(pressed);
     let base = if forced {
         base.child(layer(hot))
     } else {
         base.child(layer(rest).group_opacity(1.0, 0.0)).child(layer(hot).group_opacity(0.0, 1.0))
     };
     base.children(children)
+}
+
+pub(crate) use navigation::optical;
+
+/// The width Qt's `Text` gives a glyph: its advance widened by ink overhanging either side, in
+/// whole pixels (as [`glyph`] boxes it).
+pub(crate) fn glyph_width(t: &Theme, s: &str, size: i64) -> f32 {
+    let style = t.text_style(size);
+    let advance = rune::text::advance(s, style);
+    let Some([x, _, w, _]) = rune::text::ink(s, style).map(|i| i.bounds) else { return advance };
+    let left = (-x).max(0.0).ceil();
+    let right = if x + w > advance { ((x + w).ceil() - advance).ceil() } else { 0.0 };
+    advance + left + right
 }
 
 /// A glyph boxed the way Qt's `Text` boxes one: the advance, widened by any ink that overhangs

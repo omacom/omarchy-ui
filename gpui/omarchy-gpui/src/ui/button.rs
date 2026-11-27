@@ -116,6 +116,17 @@ impl RenderOnce for Button {
         let [rt, rr, rb, rl] = reserve(&looks);
 
         let ink = if self.selected { color(c.selected.text) } else { t.fg() };
+        let mut content_w = 0.0f32;
+        if let Some(icon) = &self.icon {
+            content_w += super::lists::glyph_width(&t, window, icon, tk.font.icon);
+            if !self.label.is_empty() {
+                content_w += sp.control_gap as f32;
+            }
+        }
+        if !self.label.is_empty() {
+            content_w += super::navigation::advance(window, &t, &self.label, tk.font.body, self.selected);
+        }
+        let min_w = content_w.ceil() + (sp.control_padding_x * 2) as f32 + rl + rr;
         let base = div()
             .id(self.id)
             .flex()
@@ -123,6 +134,7 @@ impl RenderOnce for Button {
             .flex_shrink_0()
             .items_center()
             .justify_center()
+            .min_w(px(min_w))
             .gap(px(sp.control_gap as f32))
             .pt(px(sp.control_padding_y as f32 + rt))
             .pb(px(sp.control_padding_y as f32 + rb))
@@ -130,7 +142,13 @@ impl RenderOnce for Button {
             .pr(px(sp.control_padding_x as f32 + rr));
         let mut e = chrome(base, &t, &rest, &hot, hot_now, t.radius());
         if let Some(icon) = self.icon {
-            e = e.child(super::lists::glyph(&t, window, icon, tk.font.icon, ink));
+            let icon_el = super::lists::glyph(&t, window, icon, tk.font.icon, ink);
+            if !self.label.is_empty() {
+                // Keep icon + label buttons the same height as text-only siblings.
+                e = e.child(div().flex().flex_shrink_0().items_center().h(t.line(tk.font.body)).child(icon_el));
+            } else {
+                e = e.child(icon_el);
+            }
         }
         if !self.label.is_empty() {
             e = e.child(label(&t, self.label, tk.font.body, self.selected, ink));
@@ -177,21 +195,27 @@ impl IconButton {
     }
 }
 
+/// The square side of an [`IconButton`] in points: whole and odd so a glyph centers cleanly.
+pub(crate) fn icon_button_size(t: &Paint) -> f32 {
+    let tk = t.tokens();
+    ((t.space(22.0)).max((tk.font.icon + tk.spacing.sm * 2) as f32).round() as i64 | 1) as f32
+}
+
 impl RenderOnce for IconButton {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let t = Paint::of(cx);
         let tk = t.tokens();
         let c = &tk.controls;
         let icon = tk.font.icon;
-        let size = ((t.space(22.0)).max((icon + tk.spacing.sm * 2) as f32).round() as i64 | 1) as f32;
+        let size = icon_button_size(&t);
         let focus = focus_handle(&self.id, window, cx);
         let hot_now = self.cursor || focus.is_focused(window);
         let rest = Look::new(Rgba::TRANSPARENT, if self.bordered { c.normal.border.clone() } else { BorderSpec::none() });
         // PanelActionButton shows the hover border only when bordered.
         let hot = Look::new(c.hover.fill, if self.bordered { c.hover.border.clone() } else { BorderSpec::none() });
         let base = div().id(self.id).flex().flex_shrink_0().items_center().justify_center().size(px(size));
-        let mark = super::navigation::optical(window, cx, &t, &self.glyph, icon, t.fg(), None, size, size);
-        let e = chrome(base, &t, &rest, &hot, hot_now, t.radius()).child(mark);
+        let mark = super::navigation::optical_xy(window, cx, &t, &self.glyph, icon, t.fg(), None, size, size);
+        let e = chrome(base, &t, &rest, &hot, hot_now, t.radius_small()).child(mark);
         pressable(e, &focus, self.on_click)
     }
 }

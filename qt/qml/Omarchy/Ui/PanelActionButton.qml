@@ -52,7 +52,7 @@ BorderSurface {
 
   implicitWidth: size
   implicitHeight: size
-  radius: Style.cornerRadius
+  radius: Math.min(4, Style.cornerRadius)
 
   readonly property bool _showFocusRing: focusable && activeFocus
   readonly property bool _hot: (mouse.containsMouse || root.hasCursor) && root.enabled
@@ -71,10 +71,29 @@ BorderSurface {
 
   Behavior on color { ColorAnimation { duration: Style.duration(60) } }
 
+  // Measure tight ink bounds at 100x so Nerd Font glyphs with asymmetric side
+  // bearings or vertical offsets center optically inside the square button.
+  readonly property int _metricsScale: 100
+  TextMetrics {
+    id: iconMetrics
+    font.family: root.fontFamily
+    font.pixelSize: Math.max(1, Math.round(root.fontSize)) * root._metricsScale
+    text: root.iconText
+  }
+
   Text {
+    id: iconGlyph
     textFormat: Text.PlainText
-    // Snap to whole pixels so the glyph doesn't round away from the fill's center.
-    x: Math.round((root.width - width) / 2)
+    readonly property rect _ink: Qt.rect(
+      iconMetrics.tightBoundingRect.x / root._metricsScale,
+      iconMetrics.tightBoundingRect.y / root._metricsScale,
+      iconMetrics.tightBoundingRect.width / root._metricsScale,
+      iconMetrics.tightBoundingRect.height / root._metricsScale)
+    readonly property bool _hasInk: _ink.width > 0 && _ink.height > 0
+    // Center horizontally by optical ink bounds and vertically on the line box
+    // (Qt's tightBoundingRect unions with y=0, which shifts glyphs above the
+    // baseline like U+F141 upward by 2pt).
+    x: _hasInk ? Math.round(root.width / 2 - (_ink.x + _ink.width / 2)) : Math.round((root.width - width) / 2)
     y: Math.round((root.height - height) / 2)
     text: root.iconText
     color: root.enabled

@@ -221,12 +221,22 @@ trim_snapshot (GtkWidget *w, GtkSnapshot *s)
   float radius = MIN (small, t / 2);
   gboolean corner = trim_corner (self), hbar = trim_horizontal_bar (self);
   float y = corner && g_str_has_prefix (self->edge, "bottom") ? H - t : 0;
-  omarchy_draw_fill (s,
-                     &GRAPHENE_RECT_INIT (0, corner || hbar ? y : 0, corner || hbar ? W : t, corner || hbar ? t : H),
-                     radius, &c);
+  const char *e = self->edge;
+  /* Outer edges flush against the 1px crop border stay square; only inner/free corners round. */
+  float tl = (!strcmp (e, "bottom") || !strcmp (e, "right") || !strcmp (e, "bottom-right")) ? radius : 0;
+  float tr = (!strcmp (e, "bottom") || !strcmp (e, "left") || !strcmp (e, "bottom-left")) ? radius : 0;
+  float bl = (!strcmp (e, "top") || !strcmp (e, "right") || !strcmp (e, "top-right")) ? radius : 0;
+  float br = (!strcmp (e, "top") || !strcmp (e, "left") || !strcmp (e, "top-left")) ? radius : 0;
+  omarchy_draw_fill_corners (s,
+                             &GRAPHENE_RECT_INIT (0, corner || hbar ? y : 0, corner || hbar ? W : t, corner || hbar ? t : H),
+                             tl, tr, br, bl, &c);
   if (corner) {
-    float x = strstr (self->edge, "right") ? W - t : 0;
-    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (x, 0, t, H), radius, &c);
+    float x = strstr (e, "right") ? W - t : 0;
+    omarchy_draw_fill_corners (s, &GRAPHENE_RECT_INIT (x, 0, t, H),
+                               !strcmp (e, "bottom-right") ? radius : 0,
+                               !strcmp (e, "bottom-left") ? radius : 0,
+                               !strcmp (e, "top-left") ? radius : 0,
+                               !strcmp (e, "top-right") ? radius : 0, &c);
   }
 }
 
@@ -824,8 +834,8 @@ grip_snapshot (GtkWidget *w, GtkSnapshot *s)
   float dot = omarchy_space (3), gap = omarchy_space (3);
   gboolean hot = self->cursor || self->dragging || omarchy_widget_hovered (w) || omarchy_widget_focus_shown (w);
   const GdkRGBA *c = hot ? &p->foreground : &p->text_dim;
-  float x0 = (float) omarchy_editing_round ((W - (dot * 2 + gap)) / 2);
-  float y0 = (float) omarchy_editing_round ((H - (dot * 3 + gap * 2)) / 2);
+  float x0 = (W - (dot * 2 + gap)) / 2.0f;
+  float y0 = (H - (dot * 3 + gap * 2)) / 2.0f;
   float radius = MIN (MIN (4, p->radius), dot / 2);
   for (int i = 0; i < 6; i++)
     omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (x0 + (i % 2) * (dot + gap), y0 + (i / 2) * (dot + gap), dot, dot),

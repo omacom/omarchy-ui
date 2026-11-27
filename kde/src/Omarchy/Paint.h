@@ -36,6 +36,9 @@ OMARCHY_EXPORT QString elided(const QFont &font, const QString &text, qreal widt
 // Aligned in `r` (Qt::Align*), elided to its width.
 OMARCHY_EXPORT void textIn(QPainter &p, const QRectF &r, int align, const QFont &font, const QColor &color, const QString &text,
                            Qt::TextElideMode elide = Qt::ElideRight);
+// OpticalGlyph (paintedSize 0): centers `text` horizontally on its outline ink (measured 100×
+// larger so whole-pixel bounds don't shift it) and vertically on its line box inside `box`.
+OMARCHY_EXPORT void opticalGlyph(QPainter &p, const QRectF &box, const QFont &font, const QColor &color, const QString &text);
 
 // Word-wrapped text (Text.WordWrap) at `width`: its height, and drawing it.
 OMARCHY_EXPORT qreal wrappedHeight(const QFont &font, const QString &text, qreal width);

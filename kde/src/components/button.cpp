@@ -1,7 +1,9 @@
 #include "Omarchy/Button.h"
 
+#include <QFontMetricsF>
 #include <QKeyEvent>
 #include <QPainter>
+#include <QTextLayout>
 #include <cmath>
 
 #include "Omarchy/Layout.h"
@@ -108,15 +110,16 @@ QSizeF Button::implicitSize() const {
   if (!m_icon.isEmpty()) {
     const QSizeF s = Paint::textSize(icon, m_icon);
     w += s.width() + (m_text.isEmpty() ? 0 : tk.spacing("controlGap"));
-    h = qMax(h, s.height());
+    if (m_text.isEmpty()) h = s.height();
   }
   if (!m_text.isEmpty()) {
     const QSizeF s = Paint::textSize(label, m_text);
     w += s.width();
-    h = qMax(h, s.height());
+    h = s.height();
   }
   const QMargins r = reserved();
-  return QSizeF(w + hpad() * 2 + r.left() + r.right(), h + vpad() * 2 + r.top() + r.bottom());
+  return QSizeF(std::ceil(w - 1e-6) + hpad() * 2 + r.left() + r.right(),
+                std::ceil(h - 1e-6) + vpad() * 2 + r.top() + r.bottom());
 }
 
 QSize Button::sizeHint() const {
@@ -165,12 +168,10 @@ void Button::paintEvent(QPaintEvent *) {
   const QString shown = Paint::elided(label, m_text, labelRoom);
   const QSizeF ls = m_text.isEmpty() ? QSizeF() : Paint::textSize(label, shown);
   const qreal rowW = is.width() + gap + ls.width();
-  const qreal rowH = qMax(is.height(), ls.height());
-  // Qt Quick's Button: a Row centered by anchors, each Text centered in it.
+  // Center both icon and label vertically in the button box so icon+label buttons align with text-only siblings.
   const qreal x = box.x() + (m_leftAlign ? r.left() + hpad() : Paint::centered(box.width(), rowW));
-  const qreal y = box.y() + Paint::centered(box.height(), rowH);
-  if (!m_icon.isEmpty()) Paint::text(p, QPointF(x, y + Paint::centered(rowH, is.height())), icon, textColor, m_icon);
-  if (!m_text.isEmpty()) Paint::text(p, QPointF(x + is.width() + gap, y + Paint::centered(rowH, ls.height())), label, textColor, shown);
+  if (!m_icon.isEmpty()) Paint::text(p, QPointF(x, box.y() + Paint::centered(box.height(), is.height())), icon, textColor, m_icon);
+  if (!m_text.isEmpty()) Paint::text(p, QPointF(x + is.width() + gap, box.y() + Paint::centered(box.height(), ls.height())), label, textColor, shown);
 }
 
 void Button::keyPressEvent(QKeyEvent *e) {
@@ -276,11 +277,36 @@ void IconButton::paintEvent(QPaintEvent *) {
   } else if (m_bordered) {
     border = tk.border(State::Normal, fore);
   }
-  Paint::surface(p, QRectF(rect()), tk.radius(), fill, border);
-  const QFont font = tk.fontPx(m_fontPx > 0 ? m_fontPx : tk.fontSize("icon"));
-  const QSizeF s = Paint::textSize(font, m_icon);
+  Paint::surface(p, QRectF(rect()), tk.smallRadius(), fill, border);
+  const int fontPx = m_fontPx > 0 ? m_fontPx : tk.fontSize("icon");
+  const QFont font = tk.fontPx(fontPx);
   const QColor color = !isEnabled() ? tk.textFaint() : hot ? hover : fore;
-  Paint::text(p, QPointF(std::lround((width() - s.width()) / 2), std::lround((height() - s.height()) / 2)), font, color, m_icon);
+  if (!m_icon.isEmpty()) {
+    constexpr int kScale = 100;
+    const QRectF big = QFontMetricsF(tk.fontPx(qMax(1, fontPx) * kScale)).tightBoundingRect(m_icon);
+    const QRectF ink(big.x() / kScale, big.y() / kScale, big.width() / kScale, big.height() / kScale);
+    QTextLayout layout(m_icon, font);
+    QTextOption opt;
+    opt.setUseDesignMetrics(true);
+    opt.setWrapMode(QTextOption::NoWrap);
+    layout.setTextOption(opt);
+    layout.beginLayout();
+    QTextLine line = layout.createLine();
+    if (line.isValid()) line.setPosition(QPointF(0, 0));
+    layout.endLayout();
+    const qreal lh = line.isValid() ? line.height() : Paint::lineHeight(font);
+    qreal x;
+    if (ink.width() > 0 && ink.height() > 0) {
+      x = std::floor(width() / 2.0 - (ink.x() + ink.width() / 2.0) + 0.5);
+    } else {
+      const qreal w = line.isValid() ? line.naturalTextWidth() : Paint::textWidth(font, m_icon);
+      x = std::floor((width() - w) / 2.0 + 0.5);
+    }
+    // Center Y on the line box (Qt's tightBoundingRect unions with y=0, shifting glyphs above the baseline like U+F141 upward by 2pt).
+    const qreal y = Paint::centered(height(), lh);
+    p.setPen(color);
+    layout.draw(&p, QPointF(x, y));
+  }
 }
 
 void IconButton::keyPressEvent(QKeyEvent *e) {

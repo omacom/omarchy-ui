@@ -127,7 +127,7 @@ Item {
             readonly property bool selected: root.selectedIndex === index
             readonly property bool urgent: index === 1 && root.destructive
 
-            width: Style.space(88)
+            width: Math.max(Style.space(88), Math.ceil(btnLabel.implicitWidth) + Style.spacing.controlPaddingX * 2)
             height: Style.space(34)
             color: selected
               ? (urgent ? Util.alpha(Commons.Color.urgent, 0.22) : root.selectedBackground)
@@ -135,9 +135,10 @@ Item {
             borderSpec: Border.flat(urgent
               ? (selected ? Commons.Color.urgent : Util.alpha(Commons.Color.urgent, 0.56))
               : (selected ? root.selectedText : Util.alpha(root.foreground, 0.38)), Style.normalBorderWidth)
-            radius: 0
+            radius: root.cornerRadius
 
             Text {
+              id: btnLabel
               textFormat: Text.PlainText
               anchors.centerIn: parent
               text: modelData

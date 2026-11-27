@@ -702,7 +702,29 @@ void Style::drawControl(ControlElement ce, const QStyleOption *opt, QPainter *p,
     const bool pressed = tab->state & State_Sunken;
     const int ul = t.spacing("xxs");
     QRect r = tab->rect.adjusted(0, 0, 0, -ul);
-    if (pressed || hot) Paint::surface(*p, QRectF(r), t.smallRadius(), pressed ? t.fill(Omarchy::State::Pressed) : t.fill(Omarchy::State::Hover));
+    if (pressed || hot) {
+      const QColor fill = pressed ? t.fill(Omarchy::State::Pressed) : t.fill(Omarchy::State::Hover);
+      const qreal rad = qMax<qreal>(0, qMin<qreal>(t.smallRadius(), qMin(r.width() / 2.0, qreal(r.height()))));
+      p->save();
+      p->setPen(Qt::NoPen);
+      p->setRenderHint(QPainter::Antialiasing, rad > 0);
+      if (rad <= 0) {
+        p->fillRect(r, fill);
+      } else {
+        const QRectF rf(r);
+        const qreal d = rad * 2;
+        QPainterPath path;
+        path.moveTo(rf.left(), rf.bottom());
+        path.lineTo(rf.left(), rf.top() + rad);
+        path.arcTo(QRectF(rf.left(), rf.top(), d, d), 180, -90);
+        path.lineTo(rf.right() - rad, rf.top());
+        path.arcTo(QRectF(rf.right() - d, rf.top(), d, d), 90, -90);
+        path.lineTo(rf.right(), rf.bottom());
+        path.closeSubpath();
+        p->fillPath(path, fill);
+      }
+      p->restore();
+    }
     p->fillRect(QRect(tab->rect.x(), tab->rect.bottom(), tab->rect.width(), 1), t.track());
     if (selected) p->fillRect(QRect(tab->rect.x(), tab->rect.bottom() + 1 - ul, tab->rect.width(), ul), t.accent());
     return;
@@ -827,7 +849,7 @@ void Style::drawComplexControl(ComplexControl cc, const QStyleOptionComplex *opt
   case CC_ComboBox: {
     const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(opt);
     if (!cb) break;
-    // Dropdown: the input's glass, a chevron darker 1.2 controlGap from the right.
+    // Dropdown: the input's glass, a textDim chevron controlGap from the right.
     QStyleOption o(*cb);
     if (cb->state & State_On) o.state |= State_HasFocus | State_KeyboardFocusChange;
     input(p, cb->rect, &o, true);
@@ -835,7 +857,7 @@ void Style::drawComplexControl(ComplexControl cc, const QStyleOptionComplex *opt
     const QFont f = t.font("body");
     const QString ch = chevronDown();
     const QSizeF s = Paint::textSize(f, ch);
-    const QColor c = (cb->state & State_Enabled) ? Paint::darker(t.foreground(), 1.2) : t.textFaint();
+    const QColor c = (cb->state & State_Enabled) ? t.textDim() : t.textFaint();
     Paint::text(*p, QPointF(arrow.x(), cb->rect.y() + Paint::centered(cb->rect.height(), s.height())), f, c, ch);
     return;
   }
@@ -887,7 +909,7 @@ void Style::drawComplexControl(ComplexControl cc, const QStyleOptionComplex *opt
     if (sl->tickPosition != QSlider::NoTicks && sl->maximum > sl->minimum) {
       const int interval = sl->tickInterval > 0 ? sl->tickInterval : qMax(1, sl->pageStep);
       const qreal nw = qMax(1, t.space(2));
-      for (int v = sl->minimum; v <= sl->maximum; v += interval) {
+      for (int v = sl->minimum + interval; v < sl->maximum; v += interval) {
         const int pos = sliderPositionFromValue(sl->minimum, sl->maximum, v, horiz ? groove.width() : groove.height(), !horiz);
         const QRectF n = horiz ? QRectF(groove.x() + pos - nw / 2, groove.center().y() + 0.5 - (th + t.space(4)) / 2, nw, th + t.space(4))
                                : QRectF(groove.center().x() + 0.5 - (th + t.space(4)) / 2, groove.y() + pos - nw / 2, th + t.space(4), nw);

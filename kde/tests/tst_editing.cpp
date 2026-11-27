@@ -227,7 +227,7 @@ private Q_SLOTS:
     QCOMPARE(c.hexField()->text(), QStringLiteral("#7aa2f7"));
     QVERIFY(qAbs(c.hue() * 360 - 220.8) < 0.01);
     QCOMPARE(c.square()->geometry(), QRect(0, 0, 260, 192));
-    QCOMPARE(c.squareKnobRect(), QRectF(125, -1, 14, 14));
+    QCOMPARE(c.squareKnobRect(), QRectF(125, 0, 14, 14));
     QSignalSpy edited(&c, &ColorPicker::edited);
     const qreal s = c.saturation(), v = c.value();
     c.square()->setFocus();

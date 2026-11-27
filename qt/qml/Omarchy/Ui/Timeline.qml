@@ -72,7 +72,6 @@ Item {
 
   implicitWidth: Style.space(720)
   implicitHeight: Style.space(160)
-  clip: true
   activeFocusOnTab: true
 
   // ---- ruler
@@ -146,6 +145,14 @@ Item {
     }
   }
 
+  Item {
+    id: lanesWrap
+    x: 0
+    y: root.rulerHeight
+    width: root.width
+    height: Math.max(0, root.height - root.rulerHeight)
+    clip: true
+
   Repeater {
     model: root.tracks
     delegate: Item {
@@ -154,7 +161,7 @@ Item {
       required property int index
       readonly property int trackIndex: index
       x: 0
-      y: root.laneY(index)
+      y: root.laneY(index) - root.rulerHeight
       width: root.width
       height: root.laneHeight
 
@@ -186,9 +193,11 @@ Item {
             borderSpec: clipItem._spec
           }
 
+          readonly property real _labelInset: clipItem.selected ? Style.space(8) + Style.spacing.controlPaddingX : Style.spacing.controlPaddingX
+
           Text {
-            x: Style.spacing.controlPaddingX
-            width: Math.max(0, parent.width - Style.spacing.controlPaddingX * 2)
+            x: clipItem._labelInset
+            width: Math.max(0, parent.width - clipItem._labelInset * 2)
             anchors.verticalCenter: parent.verticalCenter
             text: clipItem.modelData.label || ""
             elide: Text.ElideRight
@@ -234,6 +243,7 @@ Item {
       }
     }
   }
+  }
 
   // ---- playhead
 
@@ -246,7 +256,7 @@ Item {
     x: root.xAt(root.position) - Math.round(headWidth / 2)
     y: root.rulerHeight - headHeight
     width: headWidth
-    height: root.height - y
+    height: root.tracks.length > 0 ? root.laneY(root.tracks.length - 1) + root.laneHeight - y : root.height - y
     visible: root.position >= root.viewStart && root.position <= root.viewStart + root.duration / root.zoom
 
     Rectangle {

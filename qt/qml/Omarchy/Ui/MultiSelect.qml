@@ -158,9 +158,10 @@ Item {
   Component.onCompleted: refresh()
 
   implicitWidth: Style.spacing.searchableDropdownWidth
-  implicitHeight: showLabel && label !== "" ? rowHeight + Style.spacing.huge : rowHeight
+  implicitHeight: col.implicitHeight
 
   Column {
+    id: col
     anchors.fill: parent
     spacing: Style.spacing.labelGap
 
@@ -210,7 +211,7 @@ Item {
         anchors.right: chevron.left
         anchors.verticalCenter: parent.verticalCenter
         anchors.leftMargin: trigger.borderLeft + Style.spacing.controlPaddingX
-        anchors.rightMargin: trigger.borderRight + Style.spacing.md
+        anchors.rightMargin: Style.spacing.md
         text: root.selectionLabel() || root.triggerLabel || root.noSelectionText
         color: root.selectionLabel() ? root.foreground : Commons.Color.textDim
         font.family: root.fontFamily
@@ -224,7 +225,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: trigger.borderRight + Style.spacing.controlGap
         text: "󰅀"
-        color: Qt.darker(root.foreground, 1.2)
+        color: Commons.Color.textDim
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
       }
@@ -257,8 +258,9 @@ Item {
         property real _availableBelow: 0
         readonly property var _windowItem: trigger.Window.window ? trigger.Window.window.contentItem : null
         readonly property real _windowHeight: _windowItem ? _windowItem.height : 0
-        readonly property real _idealContent: resultList.contentHeight + Style.space(50)
-        readonly property real _maxRowsHeight: root.popupRowHeight * 6 + 5 * Style.spacing.labelGap + Style.space(50)
+        readonly property real _chromeHeight: searchHeader.height + 1 + topPadding + bottomPadding
+        readonly property real _idealContent: Math.max(root.popupRowHeight, resultList.contentHeight) + _chromeHeight
+        readonly property real _maxRowsHeight: root.popupRowHeight * 6 + 5 * Style.spacing.labelGap + _chromeHeight
 
         function reposition() {
           if (!parent) return
@@ -402,7 +404,7 @@ Item {
 
           Item {
             width: parent.width
-            height: popup.height - searchHeader.height - Style.spacing.xxs - 1
+            height: Math.max(0, popup.availableHeight - searchHeader.height - 1)
 
             Text {
               textFormat: Text.PlainText
@@ -460,6 +462,7 @@ Item {
 
                 width: resultList.width
                 height: Math.max(root.popupRowHeight, rowContent.implicitHeight + Style.spacing.rowPaddingX)
+                radius: Math.min(4, Style.cornerRadius)
                 color: index === resultList.currentIndex
                   ? Style.hoverFillFor(root.foreground, root.accent)
                   : "transparent"
@@ -477,7 +480,7 @@ Item {
                     id: checkbox
                     width: Style.space(16)
                     height: Style.space(16)
-                    radius: Math.max(2, Style.cornerRadius / 2)
+                    radius: Math.min(4, Style.cornerRadius)
                     anchors.verticalCenter: parent.verticalCenter
                     color: selected ? Style.selectedFillFor(root.foreground, root.accent) : "transparent"
                     borderSpec: selected

@@ -162,14 +162,26 @@ impl MenuItem {
         kids.push(el().grow(1.0));
         if let Some(hint) = &self.shortcut {
             let ink = if enabled { t.dim() } else { t.faint() };
-            kids.push(text(hint.clone()).font(t.text_style(tk.font.body_small)).color(ink).single_line().ml(sp.huge as f32));
+            let body_style = t.text_style(tk.font.body);
+            let hint_style = t.text_style(tk.font.body_small);
+            let baseline = |style: rune::TextStyle| {
+                rune::text::ink("H", style).map(|i| i.bounds[1] + i.bounds[3]).unwrap_or(style.line_height * 0.78)
+            };
+            let dy = ((baseline(body_style) - baseline(hint_style)) - (body_style.line_height - hint_style.line_height) / 2.0).round();
+            kids.push(text(hint.clone()).font(hint_style).color(ink).single_line().ml(sp.huge as f32).offset(0.0, dy));
         }
         if reserve_mark {
             let marked = self.checkable && self.checked;
             let mark = if marked {
                 let ink = if enabled { t.accent() } else { t.faint() };
-                let (glyph, size) = if self.exclusive { ("\u{25cf}", tk.font.caption) } else { ("\u{2713}", tk.font.body) };
-                optical(glyph, t.text_style(size), ink, None, mark_box, h)
+                if self.exclusive {
+                    let dot = t.space(6.0);
+                    let dx = ((mark_box - dot) / 2.0).round();
+                    let dy = ((h - dot) / 2.0).round();
+                    el().size(mark_box, h).child(el().absolute(dx, dy).size(dot, dot).radius(dot / 2.0).fill(ink))
+                } else {
+                    optical("\u{2713}", t.text_style(tk.font.body), ink, None, mark_box, h)
+                }
             } else if self.submenu {
                 let ink = if enabled { t.dim() } else { t.faint() };
                 optical("\u{f054}", t.text_style(tk.font.icon_small), ink, None, mark_box, h)

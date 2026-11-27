@@ -61,7 +61,7 @@ Row {
         anchors.fill: parent
         visible: cell.chosen || cell.hot
         color: "transparent"
-        radius: root._radius > 0 ? root._radius + root.ringGap : 0
+        radius: root._radius > 0 ? root._radius + root.ringGap + root.ringWidth : 0
         border.width: root.ringWidth
         border.color: cell.chosen ? root.accent : Style.hoverBorderFor(root.foreground, root.accent)
       }

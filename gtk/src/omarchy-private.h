@@ -31,11 +31,18 @@ void omarchy_layout_size (PangoLayout *l, int *width, int *height);
 /* A glyph's box as Qt boxes it: the advance, widened by ink that overhangs it. Returns the
  * x offset to draw at inside that box. */
 int omarchy_glyph_box (PangoLayout *l, int *width, int *height);
+/* Horizontal ink center of `text` from the layout origin, measured at 100× (Qt's OpticalGlyph). */
+double omarchy_ink_center_x (GtkWidget *w, const char *text, int px, gboolean bold);
+/* Draw a glyph centered optically horizontally by ink and vertically on its line box. */
+void omarchy_draw_optical_glyph (GtkWidget *w, GtkSnapshot *s, const char *text, int px, float x, float y,
+                                 float width, float height, const GdkRGBA *color);
 void omarchy_draw_layout (GtkSnapshot *s, PangoLayout *l, float x, float y, const GdkRGBA *color);
 int omarchy_line_height (int px);
 
 /* Drawing (omarchy-draw.c) */
 void omarchy_draw_fill (GtkSnapshot *s, const graphene_rect_t *r, float radius, const GdkRGBA *c);
+void omarchy_draw_fill_corners (GtkSnapshot *s, const graphene_rect_t *r, float tl, float tr, float br, float bl,
+                                const GdkRGBA *c);
 void omarchy_draw_border (GtkSnapshot *s, const graphene_rect_t *r, float radius, const OmarchyBorder *b);
 /* Fill inside the border, then the border: Qt's Rectangle with a border spec (BorderSurface). */
 void omarchy_draw_surface (GtkSnapshot *s, const graphene_rect_t *r, float radius, const GdkRGBA *fill,

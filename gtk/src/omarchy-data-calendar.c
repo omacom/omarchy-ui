@@ -130,8 +130,9 @@ calendar_allocate (GtkWidget *w, int width, int height, int baseline)
   CalendarMetrics m;
   calendar_metrics (self, omarchy_tokens (), &m);
   int bs = m.header_h;
-  gtk_widget_size_allocate (self->prev, &(GtkAllocation) { 0, 0, bs, bs }, -1);
-  gtk_widget_size_allocate (self->next, &(GtkAllocation) { m.grid_w - bs, 0, bs, bs }, -1);
+  int pad = (int) lround ((m.cw - bs) / 2.0);
+  gtk_widget_size_allocate (self->prev, &(GtkAllocation) { pad, 0, bs, bs }, -1);
+  gtk_widget_size_allocate (self->next, &(GtkAllocation) { m.grid_w - m.cw + pad, 0, bs, bs }, -1);
 }
 
 static void

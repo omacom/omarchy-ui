@@ -155,7 +155,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: trigger.borderRight + Style.spacing.controlGap
         text: "󰅀"
-        color: Qt.darker(root.foreground, 1.2)
+        color: Commons.Color.textDim
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
       }

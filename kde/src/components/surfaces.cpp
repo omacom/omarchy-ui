@@ -501,10 +501,14 @@ QRect ConfirmDialog::buttonRect(int index) const {
   const int bw = tk.border(State::Normal).top;
   const int pad = tk.space(18);
   const QRect card = cardRect();
-  const int bwid = tk.space(88), bh = tk.space(34), gap = tk.space(10);
+  const QFont f = tk.font("caption");
+  const int minW = tk.space(88), padX = tk.spacing("controlPaddingX");
+  const int w0 = qMax(minW, ceilPx(Paint::textWidth(f, cancelText())) + padX * 2);
+  const int w1 = qMax(minW, ceilPx(Paint::textWidth(f, confirmText())) + padX * 2);
+  const int bh = tk.space(34), gap = tk.space(10);
   const int right = card.right() + 1 - bw - pad;
-  const int x = index == 1 ? right - bwid : right - bwid * 2 - gap;
-  return QRect(x, card.bottom() + 1 - bw - pad - bh, bwid, bh);
+  const int x = index == 1 ? right - w1 : right - w1 - gap - w0;
+  return QRect(x, card.bottom() + 1 - bw - pad - bh, index == 1 ? w1 : w0, bh);
 }
 
 void ConfirmDialog::paintEvent(QPaintEvent *) {
@@ -524,7 +528,7 @@ void ConfirmDialog::paintEvent(QPaintEvent *) {
     const QColor fill = selected ? (destructive ? Paint::alpha(urgent, 0.22) : Paint::alpha(fg, 0.08)) : QColor(Qt::transparent);
     const QColor line = destructive ? (selected ? urgent : Paint::alpha(urgent, 0.56)) : (selected ? accent : Paint::alpha(fg, 0.38));
     const QRect r = buttonRect(i);
-    Paint::surface(p, QRectF(r), 0, fill, Border::flat(line, bw));
+    Paint::surface(p, QRectF(r), tk.radius(), fill, Border::flat(line, bw));
     const QFont f = tk.font("caption");
     const QSizeF s = Paint::textSize(f, labels[i]);
     const QColor text = destructive ? (selected ? urgent : fg) : (selected ? accent : fg);

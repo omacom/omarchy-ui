@@ -240,7 +240,7 @@ static int
 header_height (void)
 {
   const OmarchyTokens *t = omarchy_tokens ();
-  return MAX (omarchy_space (34), t->title + t->control_padding_y * 2);
+  return MAX (omarchy_space (34), t->heading + t->control_padding_y * 2);
 }
 
 static void
@@ -595,11 +595,12 @@ draw_pane (OmarchySearchList *self, GtkSnapshot *s, const Geom *g)
   } else {
     OmarchySearchItem *item = omarchy_search_list_get_current_item (self);
     if (item) {
+      float top = g->body_y + p->row_padding_x / 2.0f;
       g_autoptr (PangoLayout) t = omarchy_layout (w, item->title, p->title, TRUE);
       pango_layout_set_width (t, g->pane_w * PANGO_SCALE);
       pango_layout_set_ellipsize (t, PANGO_ELLIPSIZE_END);
-      omarchy_draw_layout (s, t, g->pane_x, g->body_y, &p->menu.text);
-      float y = g->body_y + omarchy_line_height (p->title) + p->sm;
+      omarchy_draw_layout (s, t, g->pane_x, top, &p->menu.text);
+      float y = top + omarchy_line_height (p->title) + p->sm;
       g_autoptr (PangoLayout) d = omarchy_layout (w, item->detail, p->body, FALSE);
       pango_layout_set_width (d, g->pane_w * PANGO_SCALE);
       pango_layout_set_wrap (d, PANGO_WRAP_WORD_CHAR);

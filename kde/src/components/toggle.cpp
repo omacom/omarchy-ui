@@ -80,7 +80,6 @@ void ToggleSwitch::paintEvent(QPaintEvent *) {
   const Tokens &tk = t();
   QPainter p(this);
   const bool rounded = tk.radius() > 0;
-  const QColor fg = tk.foreground();
   if (m_interactive && (isHot() || hasFocus())) Paint::surface(p, QRectF(rect()), tk.radius(), Qt::transparent, tk.border(hasFocus() ? State::Focus : State::Hover));
   const QRectF track = trackRect();
   const State st = m_checked ? State::Selected : State::Normal;
@@ -92,7 +91,7 @@ void ToggleSwitch::paintEvent(QPaintEvent *) {
   const bool mirrored = layoutDirection() == Qt::RightToLeft;
   const qreal k = mirrored ? 1 - m_knob : m_knob;
   const QRectF kr(track.x() + off + (on - off) * k, track.y() + Paint::centered(th, knob), knob, knob);
-  const QColor knobColor = m_checked ? tk.selectedText() : Paint::darker(fg, 1.25);
+  const QColor knobColor = m_checked ? tk.selectedText() : tk.textDim();
   Paint::surface(p, kr, rounded ? knob / 2.0 : 0, knobColor);
 }
 

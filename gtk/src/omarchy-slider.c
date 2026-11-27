@@ -91,25 +91,40 @@ snapshot (GtkWidget *w, GtkSnapshot *s)
   gboolean rtl = gtk_widget_get_direction (w) == GTK_TEXT_DIR_RTL;
   double frac = progress (self, self->shown);
   float ty = g.cy - g.track_h / 2.0f;
-  graphene_rect_t track = GRAPHENE_RECT_INIT (g.track_x, ty, g.track_w, g.track_h);
-  omarchy_draw_fill (s, &track, g.track_h / 2.0f, &p->selected.fill);
-  float fill_w = (float) (g.track_w * frac);
-  graphene_rect_t fill = GRAPHENE_RECT_INIT (rtl ? g.track_x + g.track_w - fill_w : g.track_x, ty, fill_w, g.track_h);
-  omarchy_draw_fill (s, &fill, g.track_h / 2.0f, &p->foreground);
+  float kx = (float) (g.track_x + g.track_w * (rtl ? 1 - frac : frac));
+  float t_end = g.track_x + g.track_w;
+  float half_k = g.knob / 2.0f;
+  float ring = MAX (1, omarchy_space (2));
+  float inner_k = MAX (4.0f, g.knob - ring * 2.0f);
+
+  /* Split the track around the knob with a true transparent gap of `ring`. */
+  float fill_start = rtl ? MIN (t_end, MAX (g.track_x, kx + half_k)) : g.track_x;
+  float fill_end = rtl ? t_end : MAX (g.track_x, MIN (t_end, kx - half_k));
+  if (fill_end > fill_start)
+    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (fill_start, ty, fill_end - fill_start, g.track_h), g.track_h / 2.0f,
+                       &p->foreground);
+
+  float un_start = rtl ? g.track_x : MIN (t_end, MAX (g.track_x, kx + half_k));
+  float un_end = rtl ? MAX (g.track_x, MIN (t_end, kx - half_k)) : t_end;
+  if (un_end > un_start)
+    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (un_start, ty, un_end - un_start, g.track_h), g.track_h / 2.0f,
+                       &p->selected.fill);
+
   const GdkRGBA *bg = surface_bg (self, p);
-  if (self->ticks > 1) {
+  if (self->ticks > 2) {
     float tw = MAX (1, omarchy_space (2)), th = g.track_h + omarchy_space (4);
-    for (int i = 0; i < self->ticks; i++) {
+    for (int i = 1; i < self->ticks - 1; i++) {
       double f = (double) i / (self->ticks - 1);
-      float x = (float) (g.track_x + g.track_w * (rtl ? 1 - f : f) - tw / 2);
-      omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (x, g.cy - th / 2, tw, th), 1, bg);
+      float cx = (float) (g.track_x + g.track_w * (rtl ? 1 - f : f));
+      if (fabsf (cx - kx) <= half_k)
+        continue;
+      omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (cx - tw / 2, g.cy - th / 2, tw, th), 1, bg);
     }
   }
-  float kx = (float) (g.track_x + g.track_w * (rtl ? 1 - frac : frac));
+
   gboolean hot = self->dragging || omarchy_widget_hovered (w) || omarchy_widget_focus_shown (w);
-  float k = g.knob * (hot && !p->reduce_motion ? 1.15f : 1.0f);
-  OmarchyBorder ring = omarchy_border_flat (bg, MAX (1, omarchy_space (2)));
-  omarchy_draw_surface (s, &GRAPHENE_RECT_INIT (kx - k / 2, g.cy - k / 2, k, k), k / 2, &p->foreground, &ring);
+  float k = inner_k * (hot && !p->reduce_motion ? 1.15f : 1.0f);
+  omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (kx - k / 2, g.cy - k / 2, k, k), k / 2, &p->foreground);
 }
 
 static gboolean

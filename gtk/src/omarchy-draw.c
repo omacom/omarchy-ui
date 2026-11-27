@@ -101,6 +101,29 @@ omarchy_glyph_box (PangoLayout *l, int *width, int *height)
   return left;
 }
 
+double
+omarchy_ink_center_x (GtkWidget *w, const char *text, int px, gboolean bold)
+{
+  g_autoptr (PangoLayout) l = omarchy_layout (w, text, MAX (1, px) * 100, bold);
+  PangoRectangle ink, logical;
+  pango_layout_get_extents (l, &ink, &logical);
+  if (ink.width <= 0)
+    return logical.width / 2.0 / PANGO_SCALE / 100.0;
+  return (ink.x + ink.width / 2.0) / PANGO_SCALE / 100.0;
+}
+
+void
+omarchy_draw_optical_glyph (GtkWidget *w, GtkSnapshot *s, const char *text, int px, float x, float y, float width,
+                            float height, const GdkRGBA *color)
+{
+  if (!text || !*text)
+    return;
+  g_autoptr (PangoLayout) l = omarchy_layout (w, text, px, FALSE);
+  double c = omarchy_ink_center_x (w, text, px, FALSE);
+  int lh = omarchy_line_height (px);
+  omarchy_draw_layout (s, l, (float) (x + width / 2.0 - c), y + roundf ((height - lh) / 2.0f), color);
+}
+
 void
 omarchy_draw_layout (GtkSnapshot *s, PangoLayout *l, float x, float y, const GdkRGBA *color)
 {
@@ -199,6 +222,29 @@ omarchy_draw_fill (GtkSnapshot *s, const graphene_rect_t *r, float radius, const
   }
   GskRoundedRect rr;
   rounded (&rr, r, radius);
+  gtk_snapshot_push_rounded_clip (s, &rr);
+  gtk_snapshot_append_color (s, c, r);
+  gtk_snapshot_pop (s);
+}
+
+void
+omarchy_draw_fill_corners (GtkSnapshot *s, const graphene_rect_t *r, float tl, float tr, float br, float bl,
+                           const GdkRGBA *c)
+{
+  if (c->alpha <= 0 || r->size.width <= 0 || r->size.height <= 0)
+    return;
+  float cap = MIN (r->size.width, r->size.height) / 2.0f;
+  tl = CLAMP (tl, 0, cap);
+  tr = CLAMP (tr, 0, cap);
+  br = CLAMP (br, 0, cap);
+  bl = CLAMP (bl, 0, cap);
+  if (tl <= 0 && tr <= 0 && br <= 0 && bl <= 0) {
+    gtk_snapshot_append_color (s, c, r);
+    return;
+  }
+  const graphene_size_t stl = { tl, tl }, str = { tr, tr }, sbr = { br, br }, sbl = { bl, bl };
+  GskRoundedRect rr;
+  gsk_rounded_rect_init (&rr, r, &stl, &str, &sbr, &sbl);
   gtk_snapshot_push_rounded_clip (s, &rr);
   gtk_snapshot_append_color (s, c, r);
   gtk_snapshot_pop (s);

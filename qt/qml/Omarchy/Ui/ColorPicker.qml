@@ -135,15 +135,31 @@ Item {
             GradientStop { position: 1; color: "#ff000000" }
           }
         }
-        BorderSurface {
+        // Clamped inside the SV square with a concentric two-tone ring (background + foreground)
+        // so it never clips off the edge, never collides with the Hue strip, and stays crisp over
+        // both white and black corners in dark and light themes.
+        Rectangle {
           width: root.knobSize
           height: root.knobSize
           radius: width / 2
-          x: Math.round(root.saturation * square.width - width / 2)
-          y: Math.round((1 - root.value) * square.height - height / 2)
-          color: Qt.rgba(root.rgb[0] / 255, root.rgb[1] / 255, root.rgb[2] / 255, 1)
-          borderSpec: Border.flat(root.surfaceColor, Math.max(1, Style.space(2)))
+          x: Math.max(0, Math.min(square.width - width, Math.round(root.saturation * square.width - width / 2)))
+          y: Math.max(0, Math.min(square.height - height, Math.round((1 - root.value) * square.height - height / 2)))
+          color: Commons.Color.background
           scale: root.hasCursor || square.activeFocus || squareArea.pressed ? 1.15 : 1
+
+          Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: width / 2
+            color: Commons.Color.foreground
+
+            Rectangle {
+              anchors.fill: parent
+              anchors.margins: 1
+              radius: width / 2
+              color: Qt.rgba(root.rgb[0] / 255, root.rgb[1] / 255, root.rgb[2] / 255, 1)
+            }
+          }
         }
         MouseArea {
           id: squareArea
@@ -220,7 +236,7 @@ Item {
       Rectangle {
         Layout.preferredWidth: hexField.implicitHeight
         Layout.preferredHeight: hexField.implicitHeight
-        radius: root.smallRadius
+        radius: Style.cornerRadius
         color: root.color
         border.width: 1
         border.color: Style.normalBorderColor
@@ -284,15 +300,23 @@ Item {
     activeFocusOnTab: true
 
     Item { id: body; anchors.fill: parent }
-    BorderSurface {
-      width: root.knobSize
-      height: root.knobSize
+    readonly property real _pad: Style.space(2)
+    readonly property real _knob: Math.max(8, root.stripWidth - _pad * 2)
+    Rectangle {
+      width: strip._knob
+      height: strip._knob
       radius: width / 2
       x: Math.round((strip.width - width) / 2)
-      y: Math.round(strip.fraction * (strip.height - height))
-      color: Commons.Color.foreground
-      borderSpec: Border.flat(root.surfaceColor, Math.max(1, Style.space(2)))
+      y: strip._pad + Math.round(strip.fraction * Math.max(0, strip.height - height - strip._pad * 2))
+      color: Commons.Color.background
       scale: strip.activeFocus || stripArea.pressed ? 1.15 : 1
+
+      Rectangle {
+        anchors.fill: parent
+        anchors.margins: 1
+        radius: width / 2
+        color: Commons.Color.foreground
+      }
     }
     MouseArea {
       id: stripArea
@@ -300,7 +324,8 @@ Item {
       preventStealing: true
       cursorShape: Qt.PointingHandCursor
       function pick(mouse) {
-        strip.picked(Math.max(0, Math.min(1, (mouse.y - root.knobSize / 2) / Math.max(1, strip.height - root.knobSize))))
+        var span = Math.max(1, strip.height - strip._knob - strip._pad * 2)
+        strip.picked(Math.max(0, Math.min(1, (mouse.y - strip._pad - strip._knob / 2) / span)))
       }
       onPressed: function(mouse) { strip.forceActiveFocus(); pick(mouse) }
       onPositionChanged: function(mouse) { if (pressed) pick(mouse) }

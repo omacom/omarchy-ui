@@ -158,8 +158,9 @@ impl RenderOnce for Calendar {
         };
         let shown = forced.is_some() || hovering || focus.is_focused(window);
 
-        // ---- Month and year between the steppers.
+        // ---- Month and year between the steppers, centered in the MO and SU columns.
         let first = Date::new(self.year, self.month, 1);
+        let btn_inset = ((cw - crate::ui::button::icon_button_size(&t)) / 2.0).round();
         let stepper = |glyph: &'static str, name: SharedString, delta: i32| {
             let to = first.add_months(delta);
             let which = if delta < 0 { "prev" } else { "next" };
@@ -168,7 +169,9 @@ impl RenderOnce for Calendar {
                 b = b.on_click(move |_, window, cx| f(&(to.year, to.month), window, cx));
             }
             let selector = format!("{}-{which}", self.id);
-            div().id(which).debug_selector(|| selector).flex_shrink_0().child(b).tooltip(crate::ui::Tooltip::text(name))
+            div().w(px(cw)).flex().flex_shrink_0().items_center().pl(px(btn_inset)).child(
+                div().id(which).debug_selector(|| selector).flex_shrink_0().child(b).tooltip(crate::ui::Tooltip::text(name)),
+            )
         };
         let title = format!("{} {}", MONTHS[self.month as usize - 1], self.year).to_uppercase();
         let header = div()

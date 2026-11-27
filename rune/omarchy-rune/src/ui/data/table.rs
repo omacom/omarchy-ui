@@ -163,6 +163,8 @@ impl Table {
         let mut body = col().w_full().role("grid").focus_group();
         for (r, cells) in self.rows.iter().enumerate() {
             let is_selected = self.selected == Some(r);
+            let is_cursor = self.cursor == Some(r);
+            let next_highlighted = self.selected == Some(r + 1) || self.cursor == Some(r + 1);
             let style = if is_selected { t.text_style_bold(tk.font.body) } else { t.text_style(tk.font.body) };
             let ink = if is_selected { selected_ink } else { t.fg() };
             let mut kids = Vec::new();
@@ -176,11 +178,11 @@ impl Table {
                 line = line.child(sized(c, row().h_full().items_center().px(pad)).child(label));
             }
             kids.push(line);
-            if self.separators && r < last {
+            if self.separators && r < last && !is_selected && !is_cursor && !next_highlighted {
                 kids.push(bottom_rule(t));
             }
             let base = el().w_full().h(h).role("row").focusable(true).focus_selected(is_selected).label(cells.first().cloned().unwrap_or_default());
-            let mut e = row_chrome(t, base, kids, is_selected, self.cursor == Some(r));
+            let mut e = row_chrome(t, base, kids, is_selected, is_cursor);
             if let Some(k) = &self.key {
                 e = e.key(format!("{k}-{r}"));
             }

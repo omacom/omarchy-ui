@@ -3,8 +3,8 @@
 
 use rune::{El, Key, KeyEvent, Tx, col, el, row, text};
 
-use super::{centered_glyph, row_chrome};
-use crate::ui::glyph;
+use super::row_chrome;
+use crate::ui::optical;
 use crate::{Theme, color};
 
 /// One node: an id the app knows it by, a label, an optional glyph, and children.
@@ -147,7 +147,7 @@ impl Tree {
             let branch = !n.children.is_empty();
             let mut line = row().w_full().h_full().items_center().pl(sp.md as f32 + v.depth as f32 * sp.huge as f32).pr(sp.md as f32);
             let mut chevron = if branch {
-                centered_glyph(t, if v.open { "\u{f0140}" } else { "\u{f0142}" }, tk.font.icon_small, t.dim(), slot)
+                optical(if v.open { "\u{f0140}" } else { "\u{f0142}" }, t.text_style(tk.font.icon_small), t.dim(), None, slot, h)
             } else {
                 el().w(slot).h_full()
             };
@@ -160,7 +160,7 @@ impl Tree {
             line = line.child(chevron).child(el().w(sp.sm as f32));
             if let Some(g) = &n.glyph {
                 let ink = if is_selected { selected_ink } else { t.dim() };
-                line = line.child(row().w(icon as f32 + sp.md as f32).h_full().items_center().child(glyph(t, g, icon, ink)));
+                line = line.child(optical(g, t.text_style(icon), ink, None, icon as f32, h)).child(el().w(sp.md as f32));
             }
             let style = if is_selected { t.text_style_bold(tk.font.body) } else { t.text_style(tk.font.body) };
             line = line.child(text(n.label.clone()).font(style).color(if is_selected { selected_ink } else { t.fg() }).truncate().grow(1.0));

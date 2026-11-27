@@ -7,7 +7,7 @@ use gpui::{App, ClickEvent, Div, ElementId, SharedString, Window, div, px};
 use omarchy_theme::Rgba;
 
 use super::button::pressable;
-use super::{Handler, Look, border, chrome, focus_handle, id_for, label_elided, paragraph};
+use super::{Handler, Look, chrome, focus_handle, id_for, label_elided, paragraph};
 use crate::{Paint, color};
 
 /// The track and knob alone.
@@ -20,7 +20,8 @@ fn track(t: &Paint, checked: bool) -> Div {
     let knob = 6f32.max((track_h * 0.72).round());
     let inset = 1f32.max(((track_h - knob) / 2.0).round());
     let state = if checked { &c.selected } else { &c.normal };
-    let knob_color = if checked { c.selected.text } else { tk.palette.foreground.darker(1.25) };
+    let knob_color = if checked { c.selected.text } else { tk.roles.text_dim };
+    let r = px(if rounded { track_h / 2.0 } else { 0.0 });
     let knob_el = div()
         .absolute()
         .left(px(if checked { track_w - knob - inset } else { inset }))
@@ -28,17 +29,14 @@ fn track(t: &Paint, checked: bool) -> Div {
         .size(px(knob))
         .rounded(px(if rounded { knob / 2.0 } else { 0.0 }))
         .bg(color(knob_color));
-    border(
-        div()
-            .relative()
-            .flex_shrink_0()
-            .w(px(track_w))
-            .h(px(track_h))
-            .rounded(px(if rounded { track_h / 2.0 } else { 0.0 }))
-            .bg(color(state.fill)),
-        &state.border,
-    )
-    .child(knob_el)
+    div()
+        .relative()
+        .flex_shrink_0()
+        .w(px(track_w))
+        .h(px(track_h))
+        .rounded(r)
+        .child(super::layer(&Look::new(state.fill, state.border.clone()), r))
+        .child(knob_el)
 }
 
 /// A bare switch. Pill-shaped when Hyprland rounds corners, square when it doesn't. The cursor is

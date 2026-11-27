@@ -41,13 +41,6 @@ FocusScope {
     event.accepted = true
   }
 
-  Rectangle {
-    y: root.height - 1
-    width: root.width
-    height: 1
-    color: Commons.Color.track
-  }
-
   Row {
     id: tabRow
     spacing: Style.spacing.xxs
@@ -66,7 +59,10 @@ FocusScope {
         implicitHeight: label.implicitHeight + Style.spacing.controlPaddingY * 2
         width: implicitWidth
         height: implicitHeight
-        radius: Math.min(4, Style.cornerRadius)
+        topLeftRadius: Math.min(4, Style.cornerRadius)
+        topRightRadius: Math.min(4, Style.cornerRadius)
+        bottomLeftRadius: 0
+        bottomRightRadius: 0
         color: mouse.pressed ? Style.pressedFill : hot ? Style.hoverFill : "transparent"
         Behavior on color { ColorAnimation { duration: Style.duration(120) } }
 
@@ -91,6 +87,13 @@ FocusScope {
         }
       }
     }
+  }
+
+  Rectangle {
+    y: root.height - 1
+    width: root.width
+    height: 1
+    color: Commons.Color.track
   }
 
   Rectangle {

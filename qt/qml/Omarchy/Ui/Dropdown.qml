@@ -67,9 +67,10 @@ Item {
   }
 
   implicitWidth: Style.spacing.dropdownWidth
-  implicitHeight: showLabel && label !== "" ? rowHeight + Style.spacing.huge : rowHeight
+  implicitHeight: col.implicitHeight
 
   Column {
+    id: col
     anchors.fill: parent
     spacing: Style.spacing.labelGap
 
@@ -119,7 +120,7 @@ Item {
         anchors.right: chevron.left
         anchors.verticalCenter: parent.verticalCenter
         anchors.leftMargin: trigger.borderLeft + Style.spacing.controlPaddingX
-        anchors.rightMargin: trigger.borderRight + Style.spacing.md
+        anchors.rightMargin: Style.spacing.md
         text: root.currentLabel()
         color: root.foreground
         font.family: root.fontFamily
@@ -133,7 +134,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: trigger.borderRight + Style.spacing.controlGap
         text: "󰅀"
-        color: Qt.darker(root.foreground, 1.2)
+        color: Commons.Color.textDim
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
       }
@@ -219,6 +220,7 @@ Item {
             required property int index
             width: optionList.width
             height: root.popupRowHeight
+            radius: Math.min(4, Style.cornerRadius)
             color: index === optionList.currentIndex
               ? Style.hoverFillFor(root.foreground, root.accent)
               : "transparent"

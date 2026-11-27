@@ -49,7 +49,7 @@ impl ToggleSwitch {
         let pad = if self.interactive { t.space(6.0) } else { 0.0 };
 
         let state = if self.checked { &c.selected } else { &c.normal };
-        let knob_color = if self.checked { c.selected.text } else { tk.palette.foreground.darker(1.25) };
+        let knob_color = if self.checked { c.selected.text } else { tk.roles.text_dim };
         let knob_el = el()
             .key("knob")
             .size(knob, knob)

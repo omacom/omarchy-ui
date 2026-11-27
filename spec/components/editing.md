@@ -92,10 +92,10 @@ Where a dragged row will land: an accent line `max(1, space(2))` thick (`DropInd
 
 An HSV picker. Its default size is `space(300)` × `space(260)`.
 
-- **Square**: saturation runs left to right and value top to bottom. It is the hue (s = v = 1) with white fading in from the left and black from the bottom, at `min(4, radius)`. Its knob is the Slider knob filled with the picked color (opaque), centered on (s, 1 − v), and scales 1.15 when hot.
-- **Hue strip**: `space(14)` wide, `md` right of the square, red, yellow, green, cyan, blue, magenta, red top to bottom. Its knob is the Slider knob (foreground), its center moving from `knob / 2` to `height − knob / 2`.
-- **Alpha strip** (optional, default on): `space(14)` wide, `md` right of the hue strip. It shows the opaque color fading to clear, over `track`, opaque at the top.
-- **Preview and hex**: `lg` below. The preview swatch is a square as tall as the field, in the picked color with alpha, with a 1px normal border. Then `md` and a TextField (`#rrggbb`, `#rrggbbaa` below full alpha, lowercase). A valid hex typed into the field applies at once.
+- **Square**: saturation runs left to right and value top to bottom. It is the hue (s = v = 1) with white fading in from the left and black from the bottom, at `min(4, radius)`. Its knob (`knobSize`) is filled with the picked color (opaque) inside a concentric two-tone ring (1 px `background` outer, 1 px `foreground` inner), clamped inside the square, and scales 1.15 when hot.
+- **Hue strip**: `space(14)` wide, `md` right of the square, red, yellow, green, cyan, blue, magenta, red top to bottom. Its knob is `max(8, stripWidth − space(4))` round (1 px `background` outer ring, `foreground` inner), inset `space(2)` from all four edges of the strip.
+- **Alpha strip** (optional, default on): `space(14)` wide, `md` right of the hue strip. It shows the opaque color fading to clear, over `track`, opaque at the top, with the same inset knob.
+- **Preview and hex**: `lg` below. The preview swatch is a square as tall as the field, in the picked color with alpha, at `radius` with a 1px normal border. Then `md` and a TextField (`#rrggbb`, `#rrggbbaa` below full alpha, lowercase). A valid hex typed into the field applies at once.
 - **Palette**: `lg` below that, swatches `space(20)` square and `md` apart, at `min(4, radius)`. They show the theme's `paletteNames`, by default `red orange yellow green cyan blue magenta foreground` from colors.toml, skipping missing keys. A swatch has a 1px normal border, the hover border when hot, and a `max(1, space(2))` foreground border when it is the current color (rgb only). Pressing one picks it and keeps the alpha.
 
 The square and strips take the height that the field and palette leave. Borders paint over what's behind the element, not its own fill, as Qt's Rectangle does.

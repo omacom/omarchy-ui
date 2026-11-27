@@ -52,7 +52,7 @@ Section {
   // Held open over the content it would cover, so the scrim shows.
   Item {
     implicitWidth: 420
-    implicitHeight: 200
+    implicitHeight: 240
 
     Card {
       anchors.fill: parent

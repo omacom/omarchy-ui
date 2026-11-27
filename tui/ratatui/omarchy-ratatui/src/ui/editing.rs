@@ -365,10 +365,12 @@ impl Draw for CropFrame {
         }
         for i in 1..3u16 {
             let gx = area.x + (w * i) / 3;
-            let gy = area.y + (h * i) / 3;
             for dy in 1..h - 1 {
                 put(t, buf, gx, area.y + dy, "┆", t.track());
             }
+        }
+        for i in 1..3u16 {
+            let gy = area.y + (h * i) / 3;
             for dx in 1..w - 1 {
                 let x = area.x + dx;
                 let cross = (1..3u16).any(|j| area.x + (w * j) / 3 == x);

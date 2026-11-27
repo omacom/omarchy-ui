@@ -185,6 +185,7 @@ impl RenderOnce for Table {
         for (r, cells) in self.rows.iter().enumerate() {
             let is_selected = self.selected == Some(r);
             let hot = shown && cursor == Some(r);
+            let next_highlighted = self.selected == Some(r + 1) || (shown && cursor == Some(r + 1));
             let ink = row_ink(&t, is_selected);
             let mut line = div().relative().flex().flex_row().w_full().h(h).flex_shrink_0().items_center().rounded(t.radius()).bg(row_fill(&t, is_selected, hot));
             for (i, c) in self.columns.iter().enumerate() {
@@ -195,7 +196,7 @@ impl RenderOnce for Table {
                 }
                 line = line.child(sized(c, div().flex().flex_row().h_full().items_center().px(pad)).child(text));
             }
-            if self.separators && r < last {
+            if self.separators && r < last && !is_selected && !hot && !next_highlighted {
                 line = line.child(bottom_rule(&t));
             }
             let (w1, w2) = (walk.clone(), walk.clone());

@@ -64,8 +64,10 @@ qreal SettingRow::wordsHeight(int width) const {
 
 int SettingRow::heightForWidth(int w) const {
   const Tokens &tk = t();
-  const qreal h = qMax<qreal>(qMax<qreal>(tk.spacing("controlHeight"), wordsHeight(w)), m_row->sizeHint().height());
-  return ceilPx(h + tk.spacing("md") * 2);
+  const int padY = tk.spacing("md");
+  const qreal h = qMax<qreal>(qMax<qreal>(tk.spacing("controlHeight") + padY * 2, wordsHeight(w) + padY * 2),
+                              m_row->sizeHint().height() + tk.spacing("xxs") * 2);
+  return ceilPx(h);
 }
 
 QSize SettingRow::sizeHint() const {

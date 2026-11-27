@@ -220,6 +220,18 @@ TEST (test_banner_height_and_wrap, "/feedback/banner-height")
   /* At least controlHeight inside sm padding and the border. */
   int one = natural_height (b, 600);
   g_assert_cmpint (one, >=, omarchy_theme_get_spacing (theme, "controlHeight") + 2 * omarchy_theme_get_spacing (theme, "sm"));
+  /* Action, dismiss-only, and text-only single-line banners share the same height. */
+  GtkWidget *with_action = omarchy_banner_new ("Omarchy 3.2 is available");
+  omarchy_banner_set_action_text (OMARCHY_BANNER (with_action), "Update");
+  g_object_ref_sink (with_action);
+  GtkWidget *dismiss_only = omarchy_banner_new ("Backup finished");
+  omarchy_banner_set_dismissible (OMARCHY_BANNER (dismiss_only), TRUE);
+  g_object_ref_sink (dismiss_only);
+  g_assert_cmpint (natural_height (with_action, 600), ==, natural_height (dismiss_only, 600));
+  g_assert_cmpint (natural_height (with_action, 600), ==, one);
+  g_object_unref (with_action);
+  g_object_unref (dismiss_only);
+
   /* A long text wraps when narrow, and the banner grows. */
   omarchy_banner_set_text (OMARCHY_BANNER (b), "Could not reach the update server; check the network and try again later");
   g_assert_cmpint (natural_height (b, 200), >, one);

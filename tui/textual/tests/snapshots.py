@@ -32,7 +32,7 @@ SIZES = {
     "messages": 26,
     "menus": 26,
     "navigation": 15,
-    "forms": 24,
+    "forms": 26,
     "pickers": 34,
     "data": 12,
     "layout": 27,

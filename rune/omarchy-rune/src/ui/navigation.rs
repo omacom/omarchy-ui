@@ -5,7 +5,7 @@
 use omarchy_theme::BorderSpec;
 use rune::{El, Key, TextStyle, col, el, row, text};
 
-use super::{Attach, Look, chrome, section_header};
+use super::{Attach, Look, chrome, chrome_corners, section_header};
 use crate::{Theme, border, color};
 
 /// Text centered in a `w` × `h` box by its ink rather than its advance, as the Qt kit's
@@ -13,6 +13,9 @@ use crate::{Theme, border, color};
 /// (rounded to whole points).
 /// `hot` is the color under the hover group (the control around it), if it changes.
 pub(crate) fn optical(s: &str, style: TextStyle, ink: rune::Color, hot: Option<rune::Color>, w: f32, h: f32) -> El {
+    if s.is_empty() {
+        return el().size(w, h);
+    }
     let advance = rune::text::advance(s, style);
     let (ix, iw) = match rune::text::ink(s, style).map(|i| i.bounds) {
         Some([x, _, w, _]) if w > 0.0 => (x, w),
@@ -356,8 +359,11 @@ impl Tabs {
         let rest = Look::clear();
         let hot = Look::new(tk.controls.hover.fill, BorderSpec::none());
         let selected_ink = color(tk.controls.selected.text);
-        let mut tabs = row().gap(sp.xxs as f32).role("tablist").focus_group();
+        let gap = sp.xxs as f32;
+        let mut tabs = row().gap(gap).role("tablist").focus_group();
         let n = self.labels.len();
+        let mut cursor_x = 0.0f32;
+        let mut selected_span: Option<(f32, f32)> = None;
         for (i, label) in self.labels.into_iter().enumerate() {
             let selected = i == self.current;
             let forced = self.cursor == Some(i);
@@ -373,6 +379,10 @@ impl Tabs {
             // Qt sizes the tab to the label's whole-pixel width and centers it on whole pixels,
             // which puts the label at the padding.
             let width = rune::text::advance(&label, style).ceil() + (sp.control_padding_x * 2) as f32;
+            if selected {
+                selected_span = Some((cursor_x, width));
+            }
+            cursor_x += width + gap;
             let base = row()
                 .key(format!("tab-{i}"))
                 .w(width)
@@ -384,11 +394,8 @@ impl Tabs {
                 .checked(selected)
                 .focusable(true)
                 .focus_selected(selected);
-            let mut kids = vec![ink];
-            if selected {
-                kids.push(el().pin(Some(0.0), None, Some(0.0), Some(0.0)).h(sp.xxs as f32).fill(t.accent()));
-            }
-            let tab = chrome(t, base, kids, &rest, &hot, forced, t.radius_small());
+            let r = t.radius_small();
+            let tab = chrome_corners(t, base, vec![ink], &rest, &hot, forced, [r, r, 0.0, 0.0]);
             let tab = t.key_map(tab, ends(i, n, Axis::Row));
             tabs = tabs.child(match &self.choose {
                 Some(attach) => attach(tab, i),
@@ -397,7 +404,14 @@ impl Tabs {
         }
         // As Qt's Tabs: h and l walk too, Up and Down don't, and the ends don't wrap (above).
         let tabs = t.key_map(tabs, &[("h", Some(Key::Left)), ("l", Some(Key::Right)), ("Up", None), ("Down", None)]);
-        el().w_full().child(el().pin(Some(0.0), None, Some(0.0), Some(0.0)).h(1.0).fill(t.track())).child(tabs)
+        let mut out = el()
+            .w_full()
+            .child(tabs)
+            .child(el().pin(Some(0.0), None, Some(0.0), Some(0.0)).h(1.0).fill(t.track()));
+        if let Some((sx, sw)) = selected_span {
+            out = out.child(el().pin(Some(sx), None, None, Some(0.0)).w(sw).h(sp.xxs as f32).fill(t.accent()));
+        }
+        out
     }
 }
 

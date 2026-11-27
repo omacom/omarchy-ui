@@ -7,7 +7,7 @@
 // (`activate`, `sort`, `toggle`, `pick`, `resize`) and, like Qt's, moves its own cursor.
 
 import { OmarchyElement, esc } from "./base.js";
-import { fitGlyph, space } from "./looks.js";
+import { OG_CSS, fitGlyph, inkCenter, ogFont, space } from "./looks.js";
 
 /** The row look every data element shares (Qt's Rectangle under each delegate). */
 const ROW_CSS = `
@@ -63,7 +63,7 @@ export class Table extends OmarchyElement {
 .head, .row { display: flex; flex: none; height: var(--omarchy-space-popup-row-height); }
 .head { position: relative; }
 .rule { position: absolute; left: 0; right: 0; bottom: 0; height: var(--omarchy-space-hairline); background: var(--omarchy-track); pointer-events: none; }
-.row:last-child .rule, :host([separators="false"]) .row .rule { display: none; }
+.row:last-child .rule, .row.no-rule .rule, :host([separators="false"]) .row .rule { display: none; }
 .col { flex: none; box-sizing: border-box; min-width: 0; display: flex; align-items: center; padding: 0 var(--omarchy-space-control-padding-x); overflow: hidden; }
 .col.flex { width: var(--flexw); }
 .col.right { justify-content: flex-end; }
@@ -163,9 +163,13 @@ export class Table extends OmarchyElement {
     if (!this._built) return;
     const show = cursorShown(this);
     this.shadowRoot.querySelectorAll(".body .row").forEach((r, i) => {
-      r.classList.toggle("sel", i === this.selectedRow);
-      r.classList.toggle("cur", show && i === this.cursorRow);
-      r.setAttribute("aria-selected", String(i === this.selectedRow));
+      const sel = i === this.selectedRow;
+      const cur = show && i === this.cursorRow;
+      const nextHi = i + 1 === this.selectedRow || (show && i + 1 === this.cursorRow);
+      r.classList.toggle("sel", sel);
+      r.classList.toggle("cur", cur);
+      r.classList.toggle("no-rule", sel || cur || nextHi);
+      r.setAttribute("aria-selected", String(sel));
     });
     this.shadowRoot.querySelectorAll(".hd").forEach((h, i) => {
       const s = h.querySelector(".sort");
@@ -193,15 +197,17 @@ export class Tree extends OmarchyElement {
     cursorId: ["string", ""],
     cursor: ["bool"],
   };
-  static css = `${ROW_CSS}
+  static css = `${ROW_CSS}${OG_CSS}
 :host { display: block; width: 240px; outline: none; overflow-y: auto; scrollbar-width: none; user-select: none; -webkit-user-select: none; }
 .row { display: block; }
-.chev { position: absolute; top: 0; height: 100%; width: var(--omarchy-space-xxxl); display: flex; align-items: center; justify-content: center;
-  left: calc(var(--omarchy-space-md) + var(--depth) * var(--omarchy-space-huge)); }
-.chev span { color: var(--omarchy-text-dim); font-size: var(--omarchy-font-icon-small); line-height: var(--omarchy-line-icon-small, normal); white-space: pre; }
-.g, .label { position: absolute; top: 0; height: 100%; display: flex; align-items: center; }
-.g { left: calc(var(--omarchy-space-md) + var(--depth) * var(--omarchy-space-huge) + var(--omarchy-space-xxxl) + var(--omarchy-space-sm)); }
-.label { --lx: calc(var(--omarchy-space-md) + var(--depth) * var(--omarchy-space-huge) + var(--omarchy-space-xxxl) + var(--omarchy-space-sm));
+.chev { position: absolute; top: 0; height: 100%; width: var(--omarchy-space-xxxl);
+  left: calc(var(--omarchy-space-md) + var(--depth) * var(--omarchy-space-huge));
+  color: var(--omarchy-text-dim); ${ogFont("icon-small")} }
+.g { position: absolute; top: 0; height: 100%; width: var(--omarchy-font-icon);
+  left: calc(var(--omarchy-space-md) + var(--depth) * var(--omarchy-space-huge) + var(--omarchy-space-xxxl) + var(--omarchy-space-sm));
+  color: var(--omarchy-text-dim); ${ogFont("icon")} }
+.row.sel .g { color: var(--omarchy-control-selected-text); }
+.label { position: absolute; top: 0; height: 100%; --lx: calc(var(--omarchy-space-md) + var(--depth) * var(--omarchy-space-huge) + var(--omarchy-space-xxxl) + var(--omarchy-space-sm));
   left: var(--lx); width: max(0px, calc(100% - var(--lx) - var(--omarchy-space-md))); display: block; line-height: var(--omarchy-space-popup-row-height); }
 .label span { display: block; overflow: hidden; text-overflow: ellipsis; }
 .row.glyphed .label { --lx: calc(var(--omarchy-space-md) + var(--depth) * var(--omarchy-space-huge) + var(--omarchy-space-xxxl) + var(--omarchy-space-sm) + var(--omarchy-font-icon) + var(--omarchy-space-md)); }
@@ -281,13 +287,13 @@ export class Tree extends OmarchyElement {
         .map(
           (r) =>
             `<div class="row${r.glyph ? " glyphed" : ""}" role="treeitem" style="--depth: ${r.depth}" data-id="${esc(r.id)}" aria-level="${r.depth + 1}"${r.branch ? ` aria-expanded="${r.open}"` : ""}>` +
-            `<div class="chev">${r.branch ? `<span>${r.open ? "\u{F0140}" : "\u{F0142}"}</span>` : ""}</div>` +
-            (r.glyph ? `<div class="g"><span class="glyph">${esc(r.glyph)}</span></div>` : "") +
+            `<div class="chev og">${r.branch ? `<span>${r.open ? "\u{F0140}" : "\u{F0142}"}</span>` : ""}</div>` +
+            (r.glyph ? `<div class="g og"><span class="glyph">${esc(r.glyph)}</span></div>` : "") +
             `<div class="label"><span class="ink">${esc(r.label)}</span></div></div>`,
         )
         .join("");
-      this.shadowRoot.querySelectorAll(".chev span").forEach(fitGlyph);
     }
+    this.shadowRoot.querySelectorAll(".chev > span, .g > span").forEach(inkCenter);
     this.paint();
   }
   paint() {
@@ -441,7 +447,7 @@ export class Sidebar extends OmarchyElement {
     collapsed: ["bool"],
     cursor: ["bool"],
   };
-  static css = `${ROW_CSS}
+  static css = `${ROW_CSS}${OG_CSS}
 :host { display: block; box-sizing: border-box; width: ${space(200)}; padding: var(--omarchy-space-sm); outline: none; user-select: none; -webkit-user-select: none; }
 :host([collapsed]) { width: calc(var(--omarchy-space-sm) * 2 + var(--omarchy-space-control-padding-x) * 2 + var(--omarchy-font-icon)); }
 .col { display: flex; flex-direction: column; gap: var(--omarchy-space-md); }
@@ -449,7 +455,9 @@ export class Sidebar extends OmarchyElement {
   padding: round(up, calc(var(--omarchy-font-caption) * 0.15), 1px) 0 var(--omarchy-space-xxs) var(--omarchy-space-control-padding-x); }
 :host([collapsed]) .head, .head:empty { display: none; }
 .row { display: block; }
-.g { position: absolute; left: var(--omarchy-space-control-padding-x); top: 0; height: 100%; display: flex; align-items: center; }
+.g { position: absolute; left: var(--omarchy-space-control-padding-x); top: 0; width: var(--omarchy-font-icon); height: 100%;
+  color: var(--omarchy-text-dim); ${ogFont("icon")} }
+.row.sel .g { color: var(--omarchy-control-selected-text); }
 .label { position: absolute; top: 0; left: calc(var(--omarchy-space-control-padding-x) + var(--omarchy-font-icon) + var(--omarchy-space-control-gap));
   right: var(--omarchy-space-control-padding-x); line-height: var(--omarchy-space-popup-row-height); }
 :host([collapsed]) .label { display: none; }
@@ -498,12 +506,13 @@ export class Sidebar extends OmarchyElement {
             `<div role="group"><div class="head">${esc(s.title || "")}</div>${(s.items || [])
               .map(
                 (it) =>
-                  `<div class="row" role="option" data-id="${esc(it.id)}" title="${esc(it.label || "")}"><div class="g"><span class="glyph">${esc(it.glyph || "")}</span></div><div class="label cell ink">${esc(it.label || "")}</div></div>`,
+                  `<div class="row" role="option" data-id="${esc(it.id)}" title="${esc(it.label || "")}"><div class="g og"><span class="glyph">${esc(it.glyph || "")}</span></div><div class="label cell ink">${esc(it.label || "")}</div></div>`,
               )
               .join("")}</div>`,
         )
         .join("")}</div>`;
     }
+    this.shadowRoot.querySelectorAll(".g > span").forEach(inkCenter);
     this.paint();
   }
   paint() {
@@ -550,6 +559,7 @@ export class Calendar extends OmarchyElement {
   outline: none; user-select: none; -webkit-user-select: none; vertical-align: top;
 }
 .head { position: relative; display: flex; align-items: center; justify-content: space-between; }
+.head-slot { width: var(--cw); display: flex; align-items: center; justify-content: center; flex: none; }
 .month { position: absolute; left: 0; right: 0; text-align: center; color: var(--omarchy-text-dim); white-space: pre;
   font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); pointer-events: none; }
 .grid { display: grid; grid-template-columns: repeat(7, var(--cw)); gap: var(--gap); }
@@ -565,7 +575,7 @@ export class Calendar extends OmarchyElement {
 .day.today { border: var(--omarchy-space-hairline) solid var(--omarchy-accent); font-weight: bold; }
 `;
   setup() {
-    this.shadowRoot.innerHTML = `<div class="head"><span class="month"></span><omarchy-icon-button class="prev" nofocus icon="\u{F0141}"></omarchy-icon-button><omarchy-icon-button class="next" nofocus icon="\u{F0142}"></omarchy-icon-button></div><div class="grid" role="grid"></div>`;
+    this.shadowRoot.innerHTML = `<div class="head"><span class="month"></span><div class="head-slot"><omarchy-icon-button class="prev" nofocus icon="\u{F0141}"></omarchy-icon-button></div><div class="head-slot"><omarchy-icon-button class="next" nofocus icon="\u{F0142}"></omarchy-icon-button></div></div><div class="grid" role="grid"></div>`;
     this.setAttribute("role", "group");
     const grid = this.$(".grid");
     followFocus(this, grid);

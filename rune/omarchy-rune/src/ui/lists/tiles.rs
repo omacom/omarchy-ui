@@ -5,7 +5,7 @@ use omarchy_theme::{BorderSpec, Rgba};
 use rune::{Align, El, Image, SurfaceFit, col, el, row, text};
 
 use super::Tone;
-use crate::ui::{Attach, glyph};
+use crate::ui::{Attach, optical};
 use crate::{Theme, border, color};
 
 /// A count or short label in a small pill. [`Tone::Neutral`] is foreground glass (the normal
@@ -200,7 +200,7 @@ impl Avatar {
             let tile = row().size(size, size).center().radius(radius).fill(color(tk.controls.selected.fill));
             let mark_size = (size * 0.5).round() as i64;
             if !self.glyph.is_empty() {
-                tile.child(glyph(t, &self.glyph, mark_size, t.fg()))
+                tile.child(optical(&self.glyph, t.text_style(mark_size), t.fg(), None, size, size))
             } else {
                 tile.child(text(Avatar::initial(&self.name)).font(t.text_style_bold(mark_size)).color(t.fg()).single_line())
             }
@@ -328,27 +328,27 @@ impl TileGrid {
             } else {
                 (Rgba::TRANSPARENT, BorderSpec::none())
             };
-            let icon = match tile.avatar {
-                Some(a) => a.size(AvatarSize::Medium).build(t),
-                None => glyph(t, &tile.glyph, f.display, t.fg()),
+            let content_w = w - pad * 2.0;
+            let icon_box = match tile.avatar {
+                Some(a) => row().size(content_w, icon_h).center().child(a.size(AvatarSize::Medium).build(t)),
+                None => optical(&tile.glyph, t.text_style(f.display), t.fg(), None, content_w, icon_h),
             };
             let mut e = col()
                 .size(w, h)
-                .items_center()
-                .pt(pad)
+                .center()
+                .gap(gap)
                 .radius(t.radius())
                 .fill(color(fill))
                 .role("option")
                 .label(tile.label.clone())
-                .child(row().h(icon_h).items_center().child(icon))
+                .child(icon_box)
                 .child(
                     text(tile.label)
                         .font(t.text_style(f.body_small))
                         .color(t.fg())
                         .align(Align::Center)
                         .max_lines(2)
-                        .w(w - pad * 2.0)
-                        .mt(gap),
+                        .w(content_w),
                 );
             e = border(e, &edge);
             if let Some(k) = &self.key {

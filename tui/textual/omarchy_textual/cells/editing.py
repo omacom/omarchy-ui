@@ -301,9 +301,10 @@ class CropFrame(Draw):
             return
         for i in (1, 2):
             gx = area.x + (w * i) // 3
-            gy = area.y + (h * i) // 3
             for dy in range(1, h - 1):
                 put(t, buf, gx, area.y + dy, "┆", t.track())
+        for i in (1, 2):
+            gy = area.y + (h * i) // 3
             for dx in range(1, w - 1):
                 x = area.x + dx
                 cross = any(area.x + (w * j) // 3 == x for j in (1, 2))

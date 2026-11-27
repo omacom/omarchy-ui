@@ -228,7 +228,6 @@ part_snapshot (GtkWidget *w, GtkSnapshot *s)
   GskRoundedRect rr;
   gsk_rounded_rect_init_from_rect (&rr, &r, MIN (small, MIN (W, H) / 2));
   int k = omarchy_editing_knob ();
-  const GdkRGBA *ring = omarchy_editing_surface (p, self->surface);
   int rgb[3];
   picker_rgb (self, rgb);
 
@@ -244,10 +243,20 @@ part_snapshot (GtkWidget *w, GtkSnapshot *s)
     gtk_snapshot_append_linear_gradient (s, &r, &GRAPHENE_POINT_INIT (0, 0), &GRAPHENE_POINT_INIT (0, H), black, 2);
     gtk_snapshot_pop (s);
     GdkRGBA fill = rgb_color (rgb, 1);
-    float kx = (float) omarchy_editing_round (self->saturation * W - k / 2.0) + k / 2.0f;
-    float ky = (float) omarchy_editing_round ((1 - self->value) * H - k / 2.0) + k / 2.0f;
+    float kx0 = CLAMP ((float) omarchy_editing_round (self->saturation * W - k / 2.0), 0.0f, MAX (0.0f, W - k));
+    float ky0 = CLAMP ((float) omarchy_editing_round ((1 - self->value) * H - k / 2.0), 0.0f, MAX (0.0f, H - k));
     gboolean hot = self->cursor || part->dragging || part_focus (w);
-    omarchy_editing_draw_knob (s, kx, ky, hot, &fill, ring);
+    gtk_snapshot_save (s);
+    if (hot) {
+      float cx = kx0 + k / 2.0f, cy = ky0 + k / 2.0f;
+      gtk_snapshot_translate (s, &GRAPHENE_POINT_INIT (cx, cy));
+      gtk_snapshot_scale (s, 1.15f, 1.15f);
+      gtk_snapshot_translate (s, &GRAPHENE_POINT_INIT (-cx, -cy));
+    }
+    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (kx0, ky0, k, k), k / 2.0f, &p->background);
+    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (kx0 + 1, ky0 + 1, k - 2, k - 2), (k - 2) / 2.0f, &p->foreground);
+    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (kx0 + 2, ky0 + 2, k - 4, k - 4), (k - 4) / 2.0f, &fill);
+    gtk_snapshot_restore (s);
     return;
   }
 
@@ -267,10 +276,21 @@ part_snapshot (GtkWidget *w, GtkSnapshot *s)
       gtk_snapshot_append_linear_gradient (s, &r, &GRAPHENE_POINT_INIT (0, 0), &GRAPHENE_POINT_INIT (0, H), stops, 2);
     }
     gtk_snapshot_pop (s);
-    float kx = (float) omarchy_editing_round ((W - k) / 2.0) + k / 2.0f;
-    float ky = (float) omarchy_editing_round (strip_fraction (part) * (H - k)) + k / 2.0f;
+    float pad = omarchy_space (2);
+    float sk = MAX (8.0f, W - pad * 2);
+    float kx0 = (float) omarchy_editing_round ((W - sk) / 2.0);
+    float ky0 = pad + (float) omarchy_editing_round (strip_fraction (part) * MAX (0.0f, H - sk - pad * 2));
     gboolean hot = part->dragging || part_focus (w);
-    omarchy_editing_draw_knob (s, kx, ky, hot, &p->foreground, ring);
+    gtk_snapshot_save (s);
+    if (hot) {
+      float cx = kx0 + sk / 2.0f, cy = ky0 + sk / 2.0f;
+      gtk_snapshot_translate (s, &GRAPHENE_POINT_INIT (cx, cy));
+      gtk_snapshot_scale (s, 1.15f, 1.15f);
+      gtk_snapshot_translate (s, &GRAPHENE_POINT_INIT (-cx, -cy));
+    }
+    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (kx0, ky0, sk, sk), sk / 2.0f, &p->background);
+    omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (kx0 + 1, ky0 + 1, sk - 2, sk - 2), (sk - 2) / 2.0f, &p->foreground);
+    gtk_snapshot_restore (s);
     return;
   }
 
@@ -297,8 +317,10 @@ part_pick (OmarchyColorPickerPart *part, double x, double y)
     picker_set (self, &self->value, v, P_PROP_VALUE);
     g_object_thaw_notify (G_OBJECT (self));
   } else {
-    int k = omarchy_editing_knob ();
-    double f = CLAMP ((y - k / 2.0) / MAX (1, H - k), 0, 1);
+    double pad = omarchy_space (2);
+    double sk = MAX (8.0, W - pad * 2);
+    double span = MAX (1.0, H - sk - pad * 2);
+    double f = CLAMP ((y - pad - sk / 2.0) / span, 0, 1);
     if (part->kind == PART_HUE)
       picker_set (self, &self->hue, MIN (f, 0.9999), P_PROP_HUE);
     else
@@ -552,7 +574,7 @@ picker_snapshot (GtkWidget *w, GtkSnapshot *s)
   GdkRGBA c;
   omarchy_color_picker_get_color (self, &c);
   OmarchyBorder b = omarchy_border_flat (&p->normal.border.color, 1);
-  omarchy_draw_surface (s, &GRAPHENE_RECT_INIT (0, g.top_h + t->lg, g.field_h, g.field_h), MIN (4, p->radius), &c, &b);
+  omarchy_draw_surface (s, &GRAPHENE_RECT_INIT (0, g.top_h + t->lg, g.field_h, g.field_h), p->radius, &c, &b);
   gtk_widget_snapshot_child (w, self->field, s);
   for (guint i = 0; i < self->swatches->len; i++)
     gtk_widget_snapshot_child (w, g_ptr_array_index (self->swatches, i), s);

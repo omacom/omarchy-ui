@@ -85,7 +85,7 @@ pub fn build(g: &mut Gallery, _window: &mut Window, cx: &mut Context<Gallery>) -
         .labels("Keep editing", "Discard")
         .destructive(true)
         .scrim(true);
-    let held = div().relative().flex_shrink_0().w(px(420.0)).h(px(200.0)).child(behind).child(dialog);
+    let held = div().relative().flex_shrink_0().w(px(420.0)).h(px(240.0)).child(behind).child(dialog);
 
     vec![selects.into_any_element(), wells.into_any_element(), strip.into_any_element(), held.into_any_element()]
 }

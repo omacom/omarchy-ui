@@ -23,7 +23,7 @@ Column {
   signal modified(int value)
   signal hovered(bool on)
 
-  spacing: Style.spacing.md
+  spacing: Style.spacing.labelGap
 
   Text {
     textFormat: Text.PlainText
@@ -31,7 +31,8 @@ Column {
     text: root.label
     color: Commons.Color.textDim
     font.family: root.fontFamily
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Style.font.caption
+    font.bold: true
   }
 
   QQC.SpinBox {
@@ -50,8 +51,8 @@ Column {
     readonly property bool _hot: root._hovered || root.hasCursor
     readonly property var _borderSpec: Border.controlSpec(_focused ? "focus" : (_hot ? "hover-cursor" : "normal"), root.foreground, root.accent)
 
-    leftPadding: Border.left(_borderSpec) + Style.spacing.controlPaddingX
-    rightPadding: Border.right(_borderSpec) + Style.spacing.controlPaddingX
+    leftPadding: (down.indicator ? down.indicator.width : 0) + Border.left(_borderSpec) + Style.spacing.sm
+    rightPadding: (up.indicator ? up.indicator.width : 0) + Border.right(_borderSpec) + Style.spacing.sm
     topPadding: Border.top(_borderSpec)
     bottomPadding: Border.bottom(_borderSpec)
 
@@ -92,7 +93,7 @@ Column {
       y: inset
       width: spin.height - inset * 2
       height: width
-      radius: Math.min(4, Style.cornerRadius)
+      radius: Math.max(0, Style.cornerRadius - inset)
       color: control.pressed ? Style.pressedFillFor(root.foreground, root.accent)
         : control.hovered ? Style.hoverFillFor(root.foreground, root.accent)
         : "transparent"

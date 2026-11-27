@@ -165,20 +165,20 @@ impl TrimHandle {
         // Rest and hot colors cross-fade with the hover group (the Qt handle tints under the
         // pointer or keyboard focus).
         let mut e = el().w(w).h(h).hover_group_focus().focusable(true).cursor(self.edge.cursor()).key(format!("handle-{}", self.edge.key()));
-        let piece = |x: f32, y: f32, pw: f32, ph: f32, r: f32| -> El {
-            let base = el().absolute(x, y).size(pw, ph).radius(r);
+        let piece = |x: f32, y: f32, pw: f32, ph: f32, corners: [f32; 4]| -> El {
+            let base = el().absolute(x, y).size(pw, ph).corners(corners);
             if self.cursor {
                 base.fill(ink)
             } else {
-                base.fill(rest).child(el().pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).radius(r).fill(ink).group_opacity(0.0, 1.0))
+                base.fill(rest).child(el().pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).corners(corners).fill(ink).group_opacity(0.0, 1.0))
             }
         };
         if !self.crop {
             // The cap: rounded outside, square inside.
             let half = (w / 2.0).floor();
-            e = e.child(piece(0.0, 0.0, w, h, small));
+            e = e.child(piece(0.0, 0.0, w, h, [small; 4]));
             let inner_x = if self.edge == Edge::Right { 0.0 } else { w - half };
-            e = e.child(piece(inner_x, 0.0, half, h, 0.0));
+            e = e.child(piece(inner_x, 0.0, half, h, [0.0; 4]));
             // The grip line, cut in the background color, longer when hot.
             let gw = 1f32.max(t.space(2.0));
             let grip = |frac: f32| {
@@ -191,18 +191,32 @@ impl TrimHandle {
                 e.child(grip(0.4).group_opacity(1.0, 0.0)).child(grip(0.6).group_opacity(0.0, 1.0))
             };
         } else {
+            // Outer corners flush against the 1px crop border stay square at r8 so they don't pull
+            // away into pinched undercut notches.
             let thick = t.space(4.0);
             let r = small.min(thick / 2.0);
             let edge = self.edge;
+            let bar_corners = [
+                if matches!(edge, Edge::Bottom | Edge::Right | Edge::BottomRight) { r } else { 0.0 },
+                if matches!(edge, Edge::Bottom | Edge::Left | Edge::BottomLeft) { r } else { 0.0 },
+                if matches!(edge, Edge::Top | Edge::Left | Edge::TopLeft) { r } else { 0.0 },
+                if matches!(edge, Edge::Top | Edge::Right | Edge::TopRight) { r } else { 0.0 },
+            ];
             if edge.is_corner() || matches!(edge, Edge::Top | Edge::Bottom) {
                 let y = if edge.is_corner() && edge.is_bottom() { h - thick } else { 0.0 };
-                e = e.child(piece(0.0, y, w, thick, r));
+                e = e.child(piece(0.0, y, w, thick, bar_corners));
             } else {
-                e = e.child(piece(0.0, 0.0, thick, h, r));
+                e = e.child(piece(0.0, 0.0, thick, h, bar_corners));
             }
             if edge.is_corner() {
                 let x = if edge.is_right() { w - thick } else { 0.0 };
-                e = e.child(piece(x, 0.0, thick, h, r));
+                let leg_corners = [
+                    if edge == Edge::BottomRight { r } else { 0.0 },
+                    if edge == Edge::BottomLeft { r } else { 0.0 },
+                    if edge == Edge::TopLeft { r } else { 0.0 },
+                    if edge == Edge::TopRight { r } else { 0.0 },
+                ];
+                e = e.child(piece(x, 0.0, thick, h, leg_corners));
             }
         }
         if let Some(d) = &self.drag {
@@ -328,8 +342,8 @@ impl DragHandle {
         let dot = t.space(3.0);
         let gap = t.space(3.0);
         let r = t.radius_small().min(dot / 2.0);
-        let x0 = ((w - (dot * 2.0 + gap)) / 2.0).round();
-        let y0 = ((h - (dot * 3.0 + gap * 2.0)) / 2.0).round();
+        let x0 = (w - (dot * 2.0 + gap)) / 2.0;
+        let y0 = (h - (dot * 3.0 + gap * 2.0)) / 2.0;
         let mut e = el().w(w).h(h).hover_group_focus().focusable(true).cursor(Cursor::Grab).key("drag-handle");
         for i in 0..6 {
             let (c, r_) = ((i % 2) as f32, (i / 2) as f32);

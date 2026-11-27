@@ -7,7 +7,7 @@ use gpui::prelude::*;
 use gpui::{App, KeyDownEvent, MouseButton, SharedString, Window, div, px};
 
 use super::{Walk, row_fill, row_ink, walk_key};
-use crate::ui::{Handler, focus_handle, keyed_state, label, label_elided, section_header, tab_keys};
+use crate::ui::{Handler, focus_handle, keyed_state, label_elided, section_header, tab_keys};
 use crate::{Paint, color};
 
 /// One row: an id the app knows it by, a label and a glyph.
@@ -97,9 +97,10 @@ impl RenderOnce for Sidebar {
         let t = Paint::of(cx);
         let tk = t.tokens();
         let sp = &tk.spacing;
-        let h = px(sp.popup_row_height as f32);
+        let row_h = sp.popup_row_height as f32;
+        let h = px(row_h);
         let inset = px(sp.control_padding_x as f32);
-        let offset = px((tk.font.icon + sp.control_gap) as f32);
+        let icon_w = tk.font.icon as f32;
         let id: gpui::ElementId = self.id.clone().into();
         let focus = focus_handle(&id, window, cx);
         let forced = self.cursor.clone();
@@ -117,9 +118,7 @@ impl RenderOnce for Sidebar {
         for s in self.sections {
             let mut section = div().flex().flex_col().w_full();
             if !self.collapsed && !s.title.is_empty() {
-                section = section.child(
-                    section_header(&t, s.title).pl(inset).pb(px(sp.xxs as f32)).overflow_hidden().text_ellipsis().w_full(),
-                );
+                section = section.child(section_header(&t, s.title).pl(inset).pb(px(sp.xxs as f32)).w_full());
             }
             for item in s.items {
                 let is_selected = self.selected.as_ref() == Some(&item.id);
@@ -133,9 +132,11 @@ impl RenderOnce for Sidebar {
                     .h_full()
                     .items_center()
                     .px(inset)
-                    .child(div().flex().flex_row().flex_shrink_0().w(offset).h_full().items_center().child(label(&t, item.glyph.clone(), tk.font.icon, false, gi)));
+                    .child(crate::ui::navigation::optical(window, cx, &t, &item.glyph, tk.font.icon, gi, None, icon_w, row_h));
                 if !self.collapsed {
-                    line = line.child(label_elided(&t, item.label.clone(), tk.font.body, is_selected, ink).flex_1());
+                    line = line
+                        .child(div().w(px(sp.control_gap as f32)).flex_shrink_0())
+                        .child(label_elided(&t, item.label.clone(), tk.font.body, is_selected, ink).flex_1());
                 }
                 let (w1, w2, fo, f) = (walk.clone(), walk.clone(), focus.clone(), self.on_select.clone());
                 let (i1, i2, i3) = (item.id.clone(), item.id.clone(), item.id.clone());

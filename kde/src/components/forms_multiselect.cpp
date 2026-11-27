@@ -98,11 +98,11 @@ public:
     if (m_filtered.size() > 1) h += (m_filtered.size() - 1) * shown().spacing("labelGap");
     return h;
   }
-  // The list's viewport, under the header and its rule (popup.height − header − xxs − 1 tall).
+  // The list's viewport, under the header and its rule (availableHeight − header − 1 tall).
   QRectF listRect() const {
     const QMargins m = insets();
     const int top = m.top() + headerHeight() + 1;
-    return QRectF(m.left(), top, width() - m.left() - m.right(), height() - headerHeight() - shown().spacing("xxs") - 1);
+    return QRectF(m.left(), top, width() - m.left() - m.right(), qMax(0, height() - m.top() - m.bottom() - headerHeight() - 1));
   }
   QRectF rowRect(int i) const {
     const QRectF list = listRect();
@@ -125,12 +125,13 @@ public:
     QWidget *win = parentWidget();
     const QRectF tr = m_owner->triggerRect();
     const QPoint at = m_owner->mapTo(win, QPoint(int(tr.x()), int(std::lround(tr.bottom())) + tk.spacing("xxs")));
+    const QMargins m = insets();
     const int rh = tk.spacing("popupRowHeight"), gap = tk.spacing("labelGap");
-    const qreal ideal = listHeight() + tk.space(50);
-    const qreal most = rh * 6 + 5 * gap + tk.space(50);
+    const qreal chrome = headerHeight() + 1 + m.top() + m.bottom();
+    const qreal ideal = qMax<qreal>(rh, listHeight()) + chrome;
+    const qreal most = rh * 6 + 5 * gap + chrome;
     const qreal below = qMax(0, win->height() - at.y() - tk.space(12));
     setGeometry(at.x(), at.y(), int(tr.width()), int(std::lround(qMin(qMin(below, ideal), most))));
-    const QMargins m = insets();
     const int md = tk.spacing("md");
     const int sh = headerHeight() - md * 2;
     const int refresh = m_owner->m_refreshable ? sh + tk.spacing("rowGap") : 0;
@@ -198,13 +199,13 @@ protected:
       const QRectF r = rowRect(i);
       if (r.bottom() < list.top() || r.top() > list.bottom()) continue;
       const Choice &o = m_filtered[i];
-      if (i == index) p.fillRect(r, tk.fill(State::Hover, fg));
+      if (i == index) Paint::surface(p, r, tk.smallRadius(), tk.fill(State::Hover, fg));
       const qreal ch = contentHeight(o);
       const qreal cy = r.y() + Paint::centered(r.height(), ch);
       const bool selected = m_owner->isSelected(o.value);
       const QRectF b(r.x() + pad, cy + Paint::centered(ch, box), box, box);
       const State st = selected ? State::Selected : State::Normal;
-      Paint::surface(p, b, qMax(2.0, tk.radius() / 2.0), selected ? tk.fill(State::Selected, fg) : QColor(Qt::transparent), tk.border(st, fg));
+      Paint::surface(p, b, tk.smallRadius(), selected ? tk.fill(State::Selected, fg) : QColor(Qt::transparent), tk.border(st, fg));
       if (selected) {
         const QString mark = QStringLiteral("✓");
         const QSizeF s = Paint::textSize(check, mark);
@@ -446,8 +447,8 @@ QRectF MultiSelect::triggerRect() const {
 QSize MultiSelect::sizeHint() const {
   const Tokens &tk = t();
   const bool labeled = m_showLabel && !m_label.isEmpty();
-  const int h = tk.spacing("controlHeight");
-  return QSize(tk.spacing("searchableDropdownWidth"), labeled ? h + tk.spacing("huge") : h);
+  const qreal h = labeled ? labelHeight() + tk.spacing("labelGap") + tk.spacing("controlHeight") : tk.spacing("controlHeight");
+  return QSize(tk.spacing("searchableDropdownWidth"), int(std::ceil(h - 1e-6)));
 }
 
 void MultiSelect::paintEvent(QPaintEvent *) {
@@ -463,12 +464,12 @@ void MultiSelect::paintEvent(QPaintEvent *) {
   const QString chev = glyph(U'\U000F0140');
   const QSizeF cs = Paint::textSize(f, chev);
   const qreal cx = r.right() - b.right - tk.spacing("controlGap") - cs.width();
-  Paint::text(p, QPointF(cx, r.y() + Paint::centered(r.height(), cs.height())), f, Paint::darker(fg, 1.2), chev);
+  Paint::text(p, QPointF(cx, r.y() + Paint::centered(r.height(), cs.height())), f, tk.textDim(), chev);
   const QString chosen = selectionLabel();
   const QString shownText = !chosen.isEmpty() ? chosen : !m_triggerLabel.isEmpty() ? m_triggerLabel : noSelectionText();
   const qreal lx = r.x() + b.left + tk.spacing("controlPaddingX");
   const qreal lh = Paint::lineHeight(f);
-  Paint::textIn(p, QRectF(lx, r.y() + Paint::centered(r.height(), lh), cx - b.right - tk.spacing("md") - lx, lh), Qt::AlignLeft | Qt::AlignTop, f,
+  Paint::textIn(p, QRectF(lx, r.y() + Paint::centered(r.height(), lh), cx - tk.spacing("md") - lx, lh), Qt::AlignLeft | Qt::AlignTop, f,
                 chosen.isEmpty() ? tk.textDim() : fg, shownText);
 }
 

@@ -100,7 +100,7 @@ The head of a panel: a big glyph, a bold title, a dim status line and a trailing
 
 **API.** Qt: `glyph`, `title`, `status`, `error`, `glyphOpacity`, `trailing: Component`. Rune: `new(glyph, title)`, `.status(s)`, `.error(b)`, `.glyph_opacity(o)`, `.trailing(El)`.
 
-**Metrics.** Glyph `display`, then `space(14)`. Title `title` bold; status `caption` bold, uppercased, letter spacing 1.2, `textDim` (`urgent` with `error`); `space(2)` apart; both elide. The trailing control sits `space(12)` after the labels, centered against them. Height is the tallest of the three.
+**Metrics.** Glyph `display` centered by ink in a `display`-wide slot (omitted when empty), then `space(14)`. Title `title` bold; status `caption` bold, uppercased, letter spacing 1.2, `textDim` (`urgent` with `error`); `space(2)` apart; both elide. The trailing control sits `space(12)` after the labels, centered against them. Height is the tallest of the three.
 
 ## Badge
 
@@ -155,7 +155,7 @@ A grid of tiles, each a glyph or an Avatar above a label of up to two lines: the
 
 **States.** As ListRow: the cursor tile takes the hover fill and border, the current one the selected fill.
 
-**Metrics.** Tiles `space(88)` wide, no gap between them, radius `radius`. Padding `md` top and bottom; an icon box `max(line(display), displayLarge)` tall with the glyph (`display`) or a medium Avatar centered; `md`; the label, `bodySmall`, centered, wrapping to at most two lines and eliding, `md` in from each side. Every tile reserves two label lines, so all are the same height.
+**Metrics.** Tiles `space(88)` wide, no gap between them, radius `radius`. Every tile reserves `md` padding top and bottom plus `max(line(display), displayLarge)` icon box, `md` gap, and two `bodySmall` label lines so all tiles share one height; inside each tile, the icon box (glyph centered by ink or medium Avatar) + `md` + actual label stack vertically centers within the tile height, with the label `bodySmall`, centered, wrapping to at most two lines and eliding, `md` in from each side.
 
 ## Gallery
 

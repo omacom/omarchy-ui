@@ -24,26 +24,30 @@ Item {
 
   readonly property real trailingInset: trailingLoader.item && trailingLoader.item.visible ? trailingLoader.width + Style.space(12) : 0
 
-  width: parent ? parent.width : implicitWidth
-  implicitWidth: heroGlyph.implicitWidth + Style.space(14) + Math.max(titleText.implicitWidth, statusText.implicitWidth) + trailingInset
-  implicitHeight: Math.max(heroGlyph.implicitHeight, labels.implicitHeight, trailingLoader.implicitHeight)
+  readonly property real glyphSlotWidth: root.glyph !== "" ? Style.font.display : 0
+  readonly property real glyphGap: root.glyph !== "" ? Style.space(14) : 0
 
-  Text {
+  width: parent ? parent.width : implicitWidth
+  implicitWidth: glyphSlotWidth + glyphGap + Math.max(titleText.implicitWidth, statusText.implicitWidth) + trailingInset
+  implicitHeight: Math.max(heroGlyph.height, labels.implicitHeight, trailingLoader.implicitHeight)
+
+  OpticalGlyph {
     id: heroGlyph
-    textFormat: Text.PlainText
+    visible: root.glyph !== ""
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
+    width: root.glyphSlotWidth
+    height: Math.max(Style.font.displayLarge, Math.ceil(Style.font.display * 1.35))
     text: root.glyph
     color: root.foreground
     opacity: root.glyphOpacity
-    font.family: Style.font.family
-    font.pixelSize: Style.font.display
+    fontSize: Style.font.display
   }
 
   Column {
     id: labels
     anchors.left: heroGlyph.right
-    anchors.leftMargin: Style.space(14)
+    anchors.leftMargin: root.glyphGap
     anchors.right: parent.right
     anchors.rightMargin: root.trailingInset
     anchors.verticalCenter: parent.verticalCenter

@@ -772,8 +772,8 @@ sidebar_snapshot (GtkWidget *w, GtkSnapshot *s)
     SidebarItem *it = pl->item;
     gboolean selected = !g_strcmp0 (self->selected_id, it->id);
     data_row_fill (s, data_x (w, W, pad, rw), pl->y, rw, rh, show && !g_strcmp0 (self->cursor_id, it->id), selected);
-    data_draw_glyph (w, s, it->glyph, p->icon, W, pad + inset, data_center_y (pl->y, rh, p->icon),
-                     selected ? &p->selected.text : &p->text_dim);
+    data_draw_optical_glyph (w, s, it->glyph, p->icon, W, pad + inset, pl->y, p->icon, rh,
+                             selected ? &p->selected.text : &p->text_dim);
     if (!self->collapsed) {
       int lx = inset + p->icon + p->control_gap;
       g_autoptr (PangoLayout) l = data_text (w, it->label, p->body, selected, MAX (0, (int) rw - lx - inset));

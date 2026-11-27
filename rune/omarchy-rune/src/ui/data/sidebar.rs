@@ -4,7 +4,7 @@
 use rune::{El, col, el, row, text};
 
 use super::row_chrome;
-use crate::ui::{glyph, section_header};
+use crate::ui::{optical, section_header};
 use crate::{Theme, color};
 
 /// One row: an id the app knows it by, a label and a glyph.
@@ -93,7 +93,7 @@ impl Sidebar {
         let sp = &tk.spacing;
         let h = sp.popup_row_height as f32;
         let inset = sp.control_padding_x as f32;
-        let offset = (tk.font.icon + sp.control_gap) as f32;
+        let icon_w = tk.font.icon as f32;
         let selected_ink = color(tk.controls.selected.text);
 
         let mut sections = col().w_full().gap(sp.md as f32);
@@ -106,10 +106,10 @@ impl Sidebar {
                 let is_selected = self.selected.as_deref() == Some(item.id.as_str());
                 let ink = if is_selected { selected_ink } else { t.fg() };
                 let mut line = row().w_full().h_full().items_center().px(inset);
-                line = line.child(row().w(offset).h_full().items_center().child(glyph(t, &item.glyph, tk.font.icon, if is_selected { ink } else { t.dim() })));
+                line = line.child(optical(&item.glyph, t.text_style(tk.font.icon), if is_selected { ink } else { t.dim() }, None, icon_w, h));
                 if !self.collapsed {
                     let style = if is_selected { t.text_style_bold(tk.font.body) } else { t.text_style(tk.font.body) };
-                    line = line.child(text(item.label.clone()).font(style).color(ink).truncate().grow(1.0));
+                    line = line.child(el().w(sp.control_gap as f32)).child(text(item.label.clone()).font(style).color(ink).truncate().grow(1.0));
                 }
                 let base = el().w_full().h(h).role("listitem").focusable(true).focus_selected(is_selected).label(item.label.clone());
                 let mut e = row_chrome(t, base, vec![line], is_selected, self.cursor.as_deref() == Some(item.id.as_str()));

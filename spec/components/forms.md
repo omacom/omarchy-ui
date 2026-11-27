@@ -23,7 +23,7 @@ A row of a settings list: words on the left, any control on the right. Stacked r
 - **Qt**: `label`, `description`, `hasCursor`, `foreground`; the control is the default child. `enabled: false` dims the words.
 - **Rune**: `SettingRow::new(label).description(d).control(el).cursor(b).disabled(b).width(w).build(&t)`.
 - **States**: normal (no chrome); cursor = `hover.fill` across the row; disabled = words in `textFaint`. The control keeps its own states and keyboard.
-- **Metrics**: padding `rowPaddingX` × `md`; min height `controlHeight + 2 × md`; label `body` fg, description `caption` `textDim`, `xxs` apart; words to control `xxl`; corners `radius`.
+- **Metrics**: padding `rowPaddingX` × `md`; height `max(controlHeight + 2 × md, words + 2 × md, trailing + 2 × xxs)` so controls with outer cursor rings (`ToggleSwitch`, `ColorWell`) stay aligned with sibling rows; label `body` fg, description `caption` `textDim`, `xxs` apart; words to control `xxl`; corners `radius`.
 
 ## Checkbox, Radio, RadioGroup
 
@@ -62,7 +62,7 @@ The shell's searchable multi-choice dropdown. The patch drops `optionsCommand` (
 - **Keys** (both): on the trigger j, Down, Return or Space opens it; in the search typing filters, Return toggles the first match and Down goes into the list; in the list j/k and Down/Up walk (stopping at the last row; Up off the first goes back to the search), Return or Space toggles; Escape closes (clearing the search). Qt moves focus into the popup. Rune keeps focus on the trigger and the app owns the state: `.on_state(|s| (&mut s.open, &mut s.search, &mut s.row))` (instead of `on_toggle` and `on_search`), passing the same values to `.open`, `.search` and `.highlighted` (the row among those the search shows, `None` while the keys are in the search); typing on the trigger lands in the search.
 - **Strings**: the search placeholder, "None selected", "No options" and "N selected" come from the catalog (`common.search`, `common.noneSelected`, `common.noOptions`, `multiSelect.selectedCount`) in both; `.texts(..)` overrides them in Rune.
 - **States**: trigger as Dropdown; the search field wears the focus look while open (it holds focus); rows show the hover fill under the cursor; a chosen row's box is `selected.fill` + `selected.border` with a bold `✓` in `selected.text`.
-- **Metrics**: width `searchableDropdownWidth`; label `caption` bold `textDim`, `labelGap` above the trigger; trigger `controlHeight`, text inset `controlPaddingX`, chevron inset `controlGap`. Popup `xxs` below, the trigger's width, border = popups border at the normal width, padding border + `hairline`, height `min(rows + space(50), 6 rows + space(50))`; search header `popupRowHeight + controlPaddingX` with `md` margins; rule 1 px fg at 0.10; rows `popupRowHeight`, `labelGap` apart, inset `controlPaddingX`, box `space(16)` with corners `max(2, radius / 2)`, box to label `rowGap`.
+- **Metrics**: width `searchableDropdownWidth`; label `caption` bold `textDim`, `labelGap` above the trigger; trigger `controlHeight`, text inset `controlPaddingX`, chevron `textDim` inset `controlGap`. Popup `xxs` below, the trigger's width, border = popups border at the normal width, padding border + `hairline`, height `min(rows, 6 rows) + search header + rule + vertical padding`; search header `popupRowHeight + controlPaddingX` with `md` margins; rule 1 px fg at 0.10; rows `popupRowHeight`, `labelGap` apart, corners `radius_small`, inset `controlPaddingX`, box `space(16)` with corners `radius_small`, box to label `rowGap`.
 
 ## ColorWell
 
@@ -70,7 +70,7 @@ The shell's searchable multi-choice dropdown. The patch drops `optionsCommand` (
 - **Qt**: `swatch`, `hasCursor`; signals `clicked()`, `hovered(bool)`; Space/Return press. Pressing gives (scale 0.97, `press` motion).
 - **Rune**: `ColorWell::new(color).cursor(b).on_press(f).build(&t)`.
 - **States**: well = `normal.fill` + `normal.border` always; cursor / pointer / focus add the ring in `hover.border`.
-- **Metrics**: well `space(44)` × `space(26)`, corners `radius_small`; color inset border + `xxs`, corners `max(0, radius_small − xxs)`; ring `sm` outside the well, corners `radius_small`.
+- **Metrics**: well `space(44)` × `space(26)`, corners `radius_small`; color inset border + `xxs`, corners `max(0, radius_small − inset)`; ring `sm` outside the well, corners `min(radius, radius_small + sm)` (0 when sharp).
 
 ## SwatchStrip
 
@@ -78,7 +78,7 @@ The shell's searchable multi-choice dropdown. The patch drops `optionsCommand` (
 - **Qt**: `colors`, `currentIndex`, `cursorIndex`; signal `picked(index)`; Left/Right (h/l) move the cursor, Space/Return pick.
 - **Rune**: `SwatchStrip::new(colors, Some(i)).cursor(Some(i)).on_pick(f).build(&t)` (a `focus_group`).
 - **States**: chosen = ring in accent; cursor / pointer = ring in `hover.border` color; chosen wins.
-- **Metrics**: chip `space(22)`, corners `radius_small`; ring `max(1, space(2))` wide, `xxs` outside the chip, corners `radius_small + xxs` (0 when sharp); cells `xxs` apart.
+- **Metrics**: chip `space(22)`, corners `radius_small`; ring `max(1, space(2))` wide, `xxs` outside the chip, corners `radius_small + xxs + ring` (0 when sharp); cells `xxs` apart.
 
 ## Dialog
 
@@ -88,11 +88,11 @@ A modal card on the `scrim`. ConfirmDialog is this card with no title, the messa
 - **Qt**: `opened`, `title`, `message`, body = default children, `secondaryText`, `primaryText` (Cancel / Confirm, translated), `destructive`, `selectedIndex` (0 secondary, 1 primary), colors; signals `rejected()`, `accepted()`; `handleKey(event)`. Escape rejects, Return takes the selected button, Left/Right/h/l/Tab move the selection; a press on the scrim rejects.
 - **Rune**: `Dialog::new(title).message(m).body(el).labels(secondary, primary)` (`common.cancel` / `common.confirm` by default, translated, as Qt's; ConfirmDialog the same) `.destructive(b).selected(i).width(w).scrim(b).modal(b).on_cancel(f).on_accept(f).build(&t)`. The selected button is the window's default button (Return); `modal(true)` traps focus, makes the rest inert and routes Escape and outside presses to `on_cancel`.
 - **States**: the selected button: `menu.selectedBackground` fill with `menu.selectedText` border and label, or for a destructive primary urgent at 0.22 with urgent border and label. Unselected: transparent, border fg at 0.38 (urgent at 0.56 when destructive), label fg.
-- **Metrics**: card `min(host − space(32), space(370))` wide, padding `space(18)`, border `menu.selectedText` at the normal width, corners `radius`, background `palette.background`; title `title` bold; message `body`; title, message and body `space(10)` apart; buttons `space(20)` below, `space(88)` × `space(34)`, `space(10)` apart, label `caption`, square.
+- **Metrics**: card `min(host − space(32), space(370))` wide, padding `space(18)`, border `menu.selectedText` at the normal width, corners `radius`, background `palette.background`; title `title` bold; message `body`; title, message and body `space(10)` apart; buttons `space(20)` below, min `space(88)` × `space(34)` (`controlPaddingX` each side), `space(10)` apart, label `caption`, corners `radius`.
 
 ## Gallery
 
 | Section | Specimens |
 |---|---|
 | `forms` | A 480-wide column of SettingRows: "Night light" / "Warm the screen after sunset" with a ToggleSwitch on; "Theme" / "Applies to every app" with a 180-wide Dropdown (no label) = Tokyo Night; "Gaps" / "Space between windows" with a NumberField (no label) 10 (0–40). Then, `huge × 2` apart and top-aligned: a column of Checkboxes `lg` apart — "Show seconds" unchecked, "Show date" checked, "Show weekday" cursor, "Show week number" disabled, "Twelve-hour clock" / "Show AM and PM" checked — and a RadioGroup Top / Bottom / Hidden with Bottom chosen. Then three 220-wide PasswordFields `controlGap` apart, top-aligned: empty with placeholder "Password"; "hunter22" (dots) with the reveal eye; "letmein" (dots) with error "Wrong password, try again". Then a 480-wide TextArea holding "Back up your dotfiles" / "before switching themes," / "then run omarchy update." (3 lines). |
-| `pickers` | MultiSelect "Bar modules" (Clock, Battery, Network, Volume, Bluetooth) closed with the first four chosen, reading "4 selected"; `xxl` beside it, in a 280-tall box, MultiSelect "Notify for" (Calendar, Mail, Messages, Updates, Battery) held open with Mail and Updates checked, reading "Mail, Updates". Then ColorWells `controlGap` apart: accent, success with cursor, urgent. Then a SwatchStrip of accent, urgent, warning, success, foreground, textDim, textFaint, muted with warning (index 2) chosen. Then a 420 × 200 box: a Card "Displays" filling it (MenuRows "Built-in display" checked, "External monitor", "Projector"), and over it a Dialog with the scrim: "Discard changes?" / "Your edits to Tokyo Night will be lost.", buttons "Keep editing" and "Discard", destructive, Discard selected. |
+| `pickers` | MultiSelect "Bar modules" (Clock, Battery, Network, Volume, Bluetooth) closed with the first four chosen, reading "4 selected"; `xxl` beside it, in a 280-tall box, MultiSelect "Notify for" (Calendar, Mail, Messages, Updates, Battery) held open with Mail and Updates checked, reading "Mail, Updates". Then ColorWells `controlGap` apart: accent, success with cursor, urgent. Then a SwatchStrip of accent, urgent, warning, success, foreground, textDim, textFaint, muted with warning (index 2) chosen. Then a 420 × 240 box: a Card "Displays" filling it (MenuRows "Built-in display" checked, "External monitor", "Projector"), and over it a Dialog with the scrim: "Discard changes?" / "Your edits to Tokyo Night will be lost.", buttons "Keep editing" and "Discard", destructive, Discard selected. |

@@ -257,12 +257,13 @@ pub struct MenuRow {
     label: String,
     checked: bool,
     highlighted: bool,
+    radius: Option<f32>,
     press: Option<Attach>,
 }
 
 impl MenuRow {
     pub fn new(label: impl Into<String>) -> MenuRow {
-        MenuRow { label: label.into(), checked: false, highlighted: false, press: None }
+        MenuRow { label: label.into(), checked: false, highlighted: false, radius: None, press: None }
     }
     pub fn checked(mut self, on: bool) -> Self {
         self.checked = on;
@@ -270,6 +271,10 @@ impl MenuRow {
     }
     pub fn highlighted(mut self, on: bool) -> Self {
         self.highlighted = on;
+        self
+    }
+    pub(crate) fn row_radius(mut self, r: f32) -> Self {
+        self.radius = Some(r);
         self
     }
     pub fn on_press<S: 'static>(mut self, f: impl Fn(&mut S) + 'static) -> Self {
@@ -287,7 +292,7 @@ impl MenuRow {
             .items_center()
             .justify_between()
             .px(sp.control_padding_x as f32)
-            .radius(t.radius())
+            .radius(self.radius.unwrap_or_else(|| t.radius()))
             .fill(if self.highlighted { hover } else { color(Rgba::TRANSPARENT) })
             .hover(hover)
             .role("menuitem")

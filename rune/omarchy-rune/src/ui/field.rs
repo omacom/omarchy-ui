@@ -13,8 +13,7 @@ fn rest_and_hot(t: &Theme) -> (Look, Look) {
     (Look::new(c.normal.fill, c.normal.border.clone()), Look::new(c.hover.fill, c.hover.border.clone()))
 }
 
-fn field_label(t: &Theme, label: &str, bold: bool) -> El {
-    let size = t.tokens().font.body_small;
+fn field_label(t: &Theme, label: &str, size: i64, bold: bool) -> El {
     let style = if bold { t.text_style_bold(size) } else { t.text_style(size) };
     text(label.to_string()).font(style).color(t.dim())
 }
@@ -135,7 +134,7 @@ impl NumberField {
             let b = el()
                 .size(side, side)
                 .center()
-                .radius(t.radius_small())
+                .radius((t.radius() - inset).max(0.0))
                 .hover(color(c.hover.fill))
                 .press(color(c.pressed.fill))
                 .role("button")
@@ -149,12 +148,20 @@ impl NumberField {
         };
         let down = step_button("\u{2212}", (self.value - self.step).max(self.from), self.value > self.from);
         let up = step_button("+", (self.value + self.step).min(self.to), self.value < self.to);
-        let value = text(self.value.to_string()).font(t.text_style(tk.font.body)).color(t.fg());
-        let base = row().w(sp.number_field_width as f32).h(h).items_center().justify_between().px(inset).role("spinbutton");
+        let value = text(self.value.to_string())
+            .font(t.text_style(tk.font.body))
+            .color(t.fg())
+            .single_line()
+            .truncate()
+            .align(Align::Center)
+            .grow(1.0)
+            .min_w(0.0)
+            .px(sp.sm as f32);
+        let base = row().w(sp.number_field_width as f32).h(h).items_center().px(inset).role("spinbutton");
         let field = chrome(t, base, vec![down, value, up], &rest, &hot, self.cursor, t.radius());
-        let mut out = col().gap(sp.md as f32);
+        let mut out = col().gap(sp.label_gap as f32);
         if !self.label.is_empty() {
-            out = out.child(field_label(t, &self.label, false));
+            out = out.child(field_label(t, &self.label, tk.font.caption, true));
         }
         out.child(field)
     }
@@ -226,7 +233,7 @@ impl Dropdown {
         let current = self.options.iter().find(|(v, _)| *v == self.value).map(|(_, l)| l.clone()).unwrap_or_default();
 
         let words = text(current).font(t.text_style(tk.font.body)).color(t.fg()).single_line().truncate().grow(1.0).min_w(0.0);
-        let chevron = super::glyph(t, "\u{f0140}", tk.font.body, t.fg_darker(1.2));
+        let chevron = super::glyph(t, "\u{f0140}", tk.font.body, t.dim());
         let base = row()
             .key(self.key.clone())
             .w(width)
@@ -250,7 +257,7 @@ impl Dropdown {
             list = border(list, &pop.border.with_width(tk.controls.normal.border.max_width().max(1.0)));
             for (value, label) in self.options {
                 let checked = value == self.value;
-                let row_el = super::MenuRow::new(label).checked(checked).build(t);
+                let row_el = super::MenuRow::new(label).checked(checked).row_radius(t.radius_small()).build(t);
                 list = list.child(match &self.choose {
                     Some(attach) => attach(row_el, value),
                     None => row_el,
@@ -261,7 +268,7 @@ impl Dropdown {
 
         let mut out = col().gap(sp.label_gap as f32);
         if !self.label.is_empty() {
-            out = out.child(field_label(t, &self.label, true));
+            out = out.child(field_label(t, &self.label, tk.font.caption, true));
         }
         out.child(trigger)
     }

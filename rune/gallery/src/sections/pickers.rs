@@ -83,14 +83,14 @@ pub fn build(s: &State, t: &Theme, layer: &mut Vec<El>) -> Vec<El> {
                 .child(MenuRow::new("Projector").build(t)),
         )
         .build(t)
-        .h(200.0);
+        .h(240.0);
     let dialog = Dialog::new("Discard changes?")
         .message("Your edits to Tokyo Night will be lost.")
         .labels("Keep editing", "Discard")
         .destructive(true)
         .scrim(true)
         .build(t);
-    let held = el().size(420.0, 200.0).child(behind).child(dialog);
+    let held = el().size(420.0, 240.0).child(behind).child(dialog);
 
     vec![selects, wells, strip, held]
 }

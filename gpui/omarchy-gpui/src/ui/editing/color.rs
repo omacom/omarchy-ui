@@ -198,10 +198,11 @@ impl RenderOnce for ColorPicker {
         let w = self.width.unwrap_or(t.space(300.0));
         let h = self.height.unwrap_or(t.space(260.0));
         let small = tk.radius_small() as f32;
+        let corner = tk.radius as f32;
         let knob = 14f32.max((sp.control_height as f32 * 0.38).round());
-        let ring = 1f32.max(t.space(2.0));
-        let surface = color(tk.surfaces.popups.background);
         let strip_w = t.space(14.0);
+        let strip_pad = t.space(2.0);
+        let strip_knob = 8f32.max(strip_w - strip_pad * 2.0);
         let swatch = t.space(20.0);
         let (md, lg) = (sp.md as f32, sp.lg as f32);
         let bw = c.normal.border.max_width().max(c.hover.border.max_width()).max(c.focus.border.max_width()) as f32;
@@ -256,23 +257,47 @@ impl RenderOnce for ColorPicker {
             }) as Handler<Hsva>
         });
 
-        let knob_el = |x: f32, y: f32, fill: Hsla, hot: bool| {
+        let sv_knob = |x: f32, y: f32, fill: Hsla, hot: bool| {
             let k = if hot { (knob * 1.15).round() } else { knob };
+            let m1 = (k - 2.0).max(0.0);
+            let m2 = (k - 4.0).max(0.0);
             div()
                 .absolute()
                 .left(px(x + (knob - k) / 2.0))
                 .top(px(y + (knob - k) / 2.0))
                 .size(px(k))
                 .rounded(px(k / 2.0))
-                .bg(fill)
-                .border(px(ring))
-                .border_color(surface)
+                .bg(t.bg())
+                .child(
+                    div()
+                        .absolute()
+                        .left(px(1.0))
+                        .top(px(1.0))
+                        .size(px(m1))
+                        .rounded(px(m1 / 2.0))
+                        .bg(t.fg())
+                        .child(div().absolute().left(px(1.0)).top(px(1.0)).size(px(m2)).rounded(px(m2 / 2.0)).bg(fill)),
+                )
+        };
+        let strip_knob_el = |x: f32, y: f32, hot: bool| {
+            let k = if hot { (strip_knob * 1.15).round() } else { strip_knob };
+            let m1 = (k - 2.0).max(0.0);
+            div()
+                .absolute()
+                .left(px(x + (strip_knob - k) / 2.0))
+                .top(px(y + (strip_knob - k) / 2.0))
+                .size(px(k))
+                .rounded(px(k / 2.0))
+                .bg(t.bg())
+                .child(div().absolute().left(px(1.0)).top(px(1.0)).size(px(m1)).rounded(px(m1 / 2.0)).bg(t.fg()))
         };
 
         // ---- the square: hue, white from the left, black from the bottom
         let square_id = child_id(&self.id, "square");
         let square_focus = focus_handle(&square_id, window, cx);
         let [hr, hg, hb] = Hsva { s: 1.0, v: 1.0, ..v }.rgb8();
+        let sv_x = (v.s * square_w - knob / 2.0).round().clamp(0.0, (square_w - knob).max(0.0));
+        let sv_y = ((1.0 - v.v) * square_h - knob / 2.0).round().clamp(0.0, (square_h - knob).max(0.0));
         let square = div()
             .id(square_id.clone())
             .relative()
@@ -282,14 +307,19 @@ impl RenderOnce for ColorPicker {
             .cursor(CursorStyle::Crosshair)
             .track_focus(&square_focus)
             .child(layer(small).bg(rgb(hr, hg, hb, 255)))
-            .child(layer(small).bg(linear_gradient(90.0, linear_color_stop(rgb(255, 255, 255, 255), 0.0), linear_color_stop(rgb(255, 255, 255, 0), 1.0))))
-            .child(layer(small).bg(linear_gradient(0.0, linear_color_stop(rgb(0, 0, 0, 255), 0.0), linear_color_stop(rgb(0, 0, 0, 0), 1.0))))
-            .child(knob_el(
-                (v.s * square_w - knob / 2.0).round(),
-                ((1.0 - v.v) * square_h - knob / 2.0).round(),
-                opaque,
-                self.cursor || square_focus.is_focused(window),
-            ));
+            .child(
+                layer(small).bg(
+                    linear_gradient(90.0, linear_color_stop(rgb(255, 255, 255, 255), 0.0), linear_color_stop(rgb(255, 255, 255, 0), 1.0))
+                        .color_space(gpui::ColorSpace::Srgb),
+                ),
+            )
+            .child(
+                layer(small).bg(
+                    linear_gradient(0.0, linear_color_stop(rgb(0, 0, 0, 255), 0.0), linear_color_stop(rgb(0, 0, 0, 0), 1.0))
+                        .color_space(gpui::ColorSpace::Srgb),
+                ),
+            )
+            .child(sv_knob(sv_x, sv_y, opaque, self.cursor || square_focus.is_focused(window)));
         let keys = set.clone();
         let square = square.on_key_down(move |ev: &KeyDownEvent, window, cx| {
             if tab_keys(ev, window, cx) {
@@ -324,10 +354,11 @@ impl RenderOnce for ColorPicker {
         });
         let square = follow_drag(square, &square_id, false, drag, window, cx);
 
-        // ---- strips with Slider knobs
+        // ---- strips with inset concentric knobs
         let strip = |name: &'static str, fraction: f32, with: Rc<dyn Fn(f32) -> Hsva>, layers: Vec<Div>, window: &mut Window, cx: &mut App| {
             let id = child_id(&self.id, name);
             let focus = focus_handle(&id, window, cx);
+            let hot = focus.is_focused(window) || super::dragging(&id, window, cx);
             let mut e = div()
                 .id(id.clone())
                 .relative()
@@ -337,7 +368,11 @@ impl RenderOnce for ColorPicker {
                 .cursor(CursorStyle::PointingHand)
                 .track_focus(&focus)
                 .children(layers)
-                .child(knob_el(((strip_w - knob) / 2.0).round(), (fraction * (square_h - knob)).round(), t.fg(), false));
+                .child(strip_knob_el(
+                    ((strip_w - strip_knob) / 2.0).round(),
+                    strip_pad + (fraction * (square_h - strip_knob - strip_pad * 2.0).max(0.0)).round(),
+                    hot,
+                ));
             let (keys, with_k) = (set.clone(), with.clone());
             e = e.on_key_down(move |ev: &KeyDownEvent, window, cx| {
                 if tab_keys(ev, window, cx) {
@@ -356,7 +391,6 @@ impl RenderOnce for ColorPicker {
                 cx.stop_propagation();
             });
             let (f, fh) = (set.clone(), focus.clone());
-            let inset = knob / 2.0;
             let drag: DragFn = Rc::new(move |d, window, cx| {
                 if d.phase == DragPhase::Down {
                     fh.focus(window, cx);
@@ -364,7 +398,8 @@ impl RenderOnce for ColorPicker {
                 if d.phase == DragPhase::Up {
                     return;
                 }
-                let fr = ((d.y - inset) / (d.h - inset * 2.0).max(1.0)).clamp(0.0, 1.0);
+                let span = (d.h - strip_knob - strip_pad * 2.0).max(1.0);
+                let fr = ((d.y - strip_pad - strip_knob / 2.0) / span).clamp(0.0, 1.0);
                 if let Some(f) = &f {
                     f(&with(fr), window, cx);
                 }
@@ -385,7 +420,10 @@ impl RenderOnce for ColorPicker {
                     .top(px(top))
                     .w(px(strip_w))
                     .h(px(bottom - top))
-                    .bg(linear_gradient(180.0, linear_color_stop(rgb(r0, g0, b0, 255), 0.0), linear_color_stop(rgb(r1, g1, b1, 255), 1.0)));
+                    .bg(
+                        linear_gradient(180.0, linear_color_stop(rgb(r0, g0, b0, 255), 0.0), linear_color_stop(rgb(r1, g1, b1, 255), 1.0))
+                            .color_space(gpui::ColorSpace::Srgb),
+                    );
                 if i == 0 {
                     d = d.rounded_t(px(small));
                 }
@@ -400,7 +438,10 @@ impl RenderOnce for ColorPicker {
         if self.alpha {
             let layers = vec![
                 layer(small).bg(t.track()),
-                layer(small).bg(linear_gradient(180.0, linear_color_stop(opaque, 0.0), linear_color_stop(rgb(r, g, b, 0), 1.0))),
+                layer(small).bg(
+                    linear_gradient(180.0, linear_color_stop(opaque, 0.0), linear_color_stop(rgb(r, g, b, 0), 1.0))
+                        .color_space(gpui::ColorSpace::Srgb),
+                ),
             ];
             top = top.child(strip("alpha", 1.0 - v.a, Rc::new(move |fr| Hsva { a: 1.0 - fr, ..v }), layers, window, cx));
         }
@@ -410,10 +451,10 @@ impl RenderOnce for ColorPicker {
             .relative()
             .flex_shrink_0()
             .size(px(field_h))
-            .rounded(px(small))
+            .rounded(px(corner))
             .border_1()
             .border_color(color(c.normal.border.color))
-            .child(inset_fill(color(v.rgba()), 0.0, (small - 1.0).max(0.0)));
+            .child(inset_fill(color(v.rgba()), 0.0, (corner - 1.0).max(0.0)));
         let middle = div().flex().flex_row().w(px(w)).gap(px(md)).child(preview).child(div().flex_1().min_w_0().child(TextField::new(&input)));
 
         // ---- the theme's palette

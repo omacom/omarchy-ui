@@ -14,7 +14,7 @@ export default {
   <omarchy-color-well swatch="var(--omarchy-urgent)"></omarchy-color-well>
 </div>
 <omarchy-swatch-strip current-index="2" colors='["var(--omarchy-accent)","var(--omarchy-urgent)","var(--omarchy-warning)","var(--omarchy-success)","var(--omarchy-foreground)","var(--omarchy-text-dim)","var(--omarchy-text-faint)","var(--omarchy-muted)"]'></omarchy-swatch-strip>
-<div style="position: relative; width: 420px; height: 200px">
+<div style="position: relative; width: 420px; height: 240px">
   <omarchy-card title="Displays" style="position: absolute; inset: 0">
     <div class="col fill">
       <omarchy-menu-row text="Built-in display" checked></omarchy-menu-row>

@@ -177,12 +177,12 @@ void NumberField::step(int dir) {
   emit modified(v);
 }
 
-qreal NumberField::labelHeight() const { return m_label.isEmpty() ? 0 : Paint::lineHeight(t().font("bodySmall")); }
+qreal NumberField::labelHeight() const { return m_label.isEmpty() ? 0 : Paint::lineHeight(t().font("caption", true)); }
 
 // The spin box under the label: numberFieldWidth × controlHeight.
 QRectF NumberField::fieldRect() const {
   const Tokens &tk = t();
-  const qreal y = m_label.isEmpty() ? 0 : labelHeight() + tk.spacing("md");
+  const qreal y = m_label.isEmpty() ? 0 : labelHeight() + tk.spacing("labelGap");
   const int h = qMax(tk.spacing("controlHeight"), tk.fontSize("body") + tk.spacing("controlPaddingY") * 2);
   return QRectF(0, y, tk.spacing("numberFieldWidth"), h);
 }
@@ -203,7 +203,7 @@ QRectF NumberField::upRect() const {
 
 QSize NumberField::sizeHint() const {
   const QRectF f = fieldRect();
-  const qreal lw = m_label.isEmpty() ? 0 : Paint::textWidth(t().font("bodySmall"), m_label);
+  const qreal lw = m_label.isEmpty() ? 0 : Paint::textWidth(t().font("caption", true), m_label);
   return QSize(ceilPx(qMax(f.width(), lw)), ceilPx(f.bottom()));
 }
 
@@ -211,8 +211,10 @@ void NumberField::place() {
   const Tokens &tk = t();
   const QRectF f = fieldRect(), d = downRect(), u = upRect();
   const int b = tk.border(State::Normal).top;
-  // The value is centered in the field; the editor spans the room between the steps.
+  // The value is centered in the field; the editor spans the room between the steps with sm clearance.
   m_edit->setFont(tk.font("body"));
+  const int smPad = qMax(0, tk.spacing("sm") - 2);
+  m_edit->setTextMargins(smPad, 0, smPad, 0);
   m_edit->setGeometry(QRectF(d.right(), f.y() + b, u.left() - d.right(), f.height() - 2 * b).toAlignedRect());
 }
 
@@ -221,15 +223,17 @@ void NumberField::resizeEvent(QResizeEvent *) { place(); }
 void NumberField::paintEvent(QPaintEvent *) {
   const Tokens &tk = t();
   QPainter p(this);
-  if (!m_label.isEmpty()) Paint::text(p, QPointF(0, 0), tk.font("bodySmall"), tk.textDim(), m_label);
+  if (!m_label.isEmpty()) Paint::text(p, QPointF(0, 0), tk.font("caption", true), tk.textDim(), m_label);
   inputSurface(p, fieldRect(), m_edit->hasFocus(), isHot());
   const QFont f = tk.font("body");
+  const int inset = tk.border(State::Normal).top;
+  const qreal stepRadius = qMax<qreal>(0, tk.radius() - inset);
   for (int part : {-1, 1}) {
     const QRectF r = part < 0 ? downRect() : upRect();
     const bool enabled = isEnabled() && (part < 0 ? m_value > m_from : m_value < m_to);
     const bool pressed = enabled && m_pressedPart == part;
     const bool hot = enabled && m_hoverPart == part;
-    if (pressed || hot) Paint::surface(p, r, tk.smallRadius(), pressed ? tk.fill(State::Pressed) : tk.fill(State::Hover));
+    if (pressed || hot) Paint::surface(p, r, stepRadius, pressed ? tk.fill(State::Pressed) : tk.fill(State::Hover));
     const QString g = part < 0 ? QStringLiteral("−") : QStringLiteral("+");
     const QSizeF s = Paint::textSize(f, g);
     p.save();
@@ -358,7 +362,7 @@ protected:
     const int pad = tk.spacing("controlPaddingX");
     for (int i = 0; i < m_owner->m_options.size(); ++i) {
       const QRectF r = rowRect(i);
-      if (i == index) p.fillRect(r, tk.fill(State::Hover, fg));
+      if (i == index) Paint::surface(p, r, tk.smallRadius(), tk.fill(State::Hover, fg));
       Paint::textIn(p, QRectF(r.x() + pad, r.y() + Paint::centered(r.height(), lh), r.width() - 2 * pad, lh), Qt::AlignLeft | Qt::AlignTop, f, fg,
                     m_owner->m_options[i].label);
     }
@@ -453,8 +457,8 @@ QRectF Dropdown::triggerRect() const {
 QSize Dropdown::sizeHint() const {
   const Tokens &tk = t();
   const bool labeled = m_showLabel && !m_label.isEmpty();
-  const int h = tk.spacing("controlHeight");
-  return QSize(tk.spacing("dropdownWidth"), labeled ? h + tk.spacing("huge") : h);
+  const qreal h = labeled ? labelHeight() + tk.spacing("labelGap") + tk.spacing("controlHeight") : tk.spacing("controlHeight");
+  return QSize(tk.spacing("dropdownWidth"), ceilPx(h));
 }
 
 void Dropdown::paintEvent(QPaintEvent *) {
@@ -471,7 +475,7 @@ void Dropdown::paintEvent(QPaintEvent *) {
   const QString chev = QString::fromUcs4(U"\U000F0140", 1);
   const QSizeF cs = Paint::textSize(f, chev);
   const qreal cx = r.right() - b.right - tk.spacing("controlGap") - cs.width();
-  Paint::text(p, QPointF(cx, r.y() + Paint::centered(r.height(), cs.height())), f, Paint::darker(fg, 1.2), chev);
+  Paint::text(p, QPointF(cx, r.y() + Paint::centered(r.height(), cs.height())), f, tk.textDim(), chev);
   const qreal lx = r.x() + b.left + tk.spacing("controlPaddingX");
   const qreal lh = Paint::lineHeight(f);
   Paint::textIn(p, QRectF(lx, r.y() + Paint::centered(r.height(), lh), cx - tk.spacing("md") - lx, lh), Qt::AlignLeft | Qt::AlignTop, f, fg, currentLabel());

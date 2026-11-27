@@ -28,7 +28,7 @@ export class SearchList extends OmarchyElement {
   border-radius: var(--omarchy-radius);
   padding: var(--omarchy-space-panel-padding);
 }
-.header { flex: none; position: relative; height: max(${space(34)}, calc(var(--omarchy-font-title) + 2 * var(--omarchy-space-control-padding-y))); display: flex; align-items: center; }
+.header { flex: none; position: relative; height: max(${space(34)}, calc(var(--omarchy-font-heading) + 2 * var(--omarchy-space-control-padding-y))); display: flex; align-items: center; }
 input {
   all: unset; box-sizing: border-box; width: 100%;
   font-family: var(--omarchy-font-family); font-size: var(--omarchy-font-heading); line-height: var(--omarchy-line-heading, normal);
@@ -40,7 +40,7 @@ input::selection { background: transparent; }
 omarchy-scroll-area { flex: none; height: 100%; }
 omarchy-scroll-area::part(view) { max-height: 100%; }
 .rule { flex: none; width: 1px; background: var(--omarchy-track); margin: 0 var(--omarchy-space-xxl); }
-.detail { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--omarchy-space-sm); }
+.detail { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--omarchy-space-sm); padding-top: calc(var(--omarchy-space-row-padding-x) / 2); }
 .detail .t { font-size: var(--omarchy-font-title); line-height: var(--omarchy-line-title, normal); font-weight: bold; color: var(--omarchy-menu-text);
   white-space: pre; overflow: hidden; text-overflow: ellipsis; }
 .detail .d { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); color: var(--omarchy-text-dim); overflow-wrap: anywhere; }

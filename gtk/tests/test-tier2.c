@@ -199,3 +199,40 @@ TEST (test_pane_action_ends_the_header_and_runs, "/surfaces/pane-action")
   g_assert_cmpint (fired, ==, 1);
   drive_close (window);
 }
+
+TEST (test_round2_polish_geometry, "/polish/geometry")
+{
+  OmarchyTheme *theme = omarchy_theme_get_default ();
+  int control_h = omarchy_theme_get_spacing (theme, "controlHeight");
+  int md = omarchy_theme_get_spacing (theme, "md");
+
+  /* Labeled NumberField, Dropdown, and MultiSelect share the same natural height. */
+  GtkWidget *nf = omarchy_number_field_new ("Gaps", 0, 40);
+  GtkWidget *dd = omarchy_dropdown_new ("Theme");
+  GtkWidget *ms = omarchy_multi_select_new ("Tags");
+  g_object_ref_sink (nf);
+  g_object_ref_sink (dd);
+  g_object_ref_sink (ms);
+  int nf_h, dd_h, ms_h;
+  gtk_widget_measure (nf, GTK_ORIENTATION_VERTICAL, 220, NULL, &nf_h, NULL, NULL);
+  gtk_widget_measure (dd, GTK_ORIENTATION_VERTICAL, 220, NULL, &dd_h, NULL, NULL);
+  gtk_widget_measure (ms, GTK_ORIENTATION_VERTICAL, 220, NULL, &ms_h, NULL, NULL);
+  g_assert_cmpint (nf_h, ==, dd_h);
+  g_assert_cmpint (ms_h, ==, dd_h);
+  g_object_unref (nf);
+  g_object_unref (dd);
+  g_object_unref (ms);
+
+  /* SettingRow with ToggleSwitch or ColorWell stays controlHeight + 2 * md (40pt at scale 1). */
+  GtkWidget *row_sw = omarchy_setting_row_new ("Auto-hide", NULL, omarchy_toggle_switch_new ());
+  GtkWidget *row_cw = omarchy_setting_row_new ("Accent", NULL, omarchy_color_well_new (NULL));
+  g_object_ref_sink (row_sw);
+  g_object_ref_sink (row_cw);
+  int sw_h, cw_h;
+  gtk_widget_measure (row_sw, GTK_ORIENTATION_VERTICAL, 360, NULL, &sw_h, NULL, NULL);
+  gtk_widget_measure (row_cw, GTK_ORIENTATION_VERTICAL, 360, NULL, &cw_h, NULL, NULL);
+  g_assert_cmpint (sw_h, ==, control_h + 2 * md);
+  g_assert_cmpint (cw_h, ==, control_h + 2 * md);
+  g_object_unref (row_sw);
+  g_object_unref (row_cw);
+}

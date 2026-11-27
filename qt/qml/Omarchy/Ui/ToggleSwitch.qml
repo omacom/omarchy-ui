@@ -96,7 +96,7 @@ Item {
       radius: root.rounded ? height / 2 : 0
       x: root.checked !== root.mirrored ? track.width - width - root.knobInset : root.knobInset
       anchors.verticalCenter: parent.verticalCenter
-      color: root.checked ? Style.selectedStateColor(root.foreground, root.accent) : Qt.darker(root.foreground, 1.25)
+      color: root.checked ? Style.selectedStateColor(root.foreground, root.accent) : Commons.Color.textDim
 
       Behavior on x { NumberAnimation { duration: Style.duration(120); easing.type: Easing.OutCubic } }
       Behavior on color { ColorAnimation { duration: Style.duration(120) } }

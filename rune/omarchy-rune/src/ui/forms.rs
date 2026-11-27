@@ -94,11 +94,13 @@ impl SettingRow {
             words = words.child(text(self.description).font(t.text_style(tk.font.caption)).color(dim).wrap());
         }
         let pad_y = sp.md as f32;
+        let xxs = sp.xxs as f32;
+        let words = words.py((pad_y - xxs).max(0.0));
         let mut r = row()
             .items_center()
             .gap(sp.xxl as f32)
             .px(sp.row_padding_x as f32)
-            .py(pad_y)
+            .py(xxs)
             .min_h(sp.control_height as f32 + pad_y * 2.0)
             .radius(t.radius())
             .label(self.label)

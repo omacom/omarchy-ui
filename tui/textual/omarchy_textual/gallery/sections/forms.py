@@ -31,7 +31,7 @@ class Forms(Section):
 
     def compose(self) -> ComposeResult:
         with Col(gap=1):
-            with Col(gap=0):
+            with Col(gap=1):
                 yield SettingRow("Night light", "Warm the screen after sunset", ToggleSwitch(True, id="night"), width=60)
                 yield SettingRow("Theme", "Applies to every app", Dropdown(THEMES, 0, width=23, focusable=False), width=60)
                 yield SettingRow("Gaps", "Space between windows", NumberField(10, range=(0, 40), width=15, focusable=False), width=60)

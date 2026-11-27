@@ -80,6 +80,13 @@ data_draw_glyph (GtkWidget *w, GtkSnapshot *s, const char *glyph, int px, float 
   omarchy_draw_layout (s, l, data_x (w, W, x, gw) + dx, y, c);
 }
 
+static inline void
+data_draw_optical_glyph (GtkWidget *w, GtkSnapshot *s, const char *glyph, int px, float W, float x, float y,
+                         float slot_w, float slot_h, const GdkRGBA *c)
+{
+  omarchy_draw_optical_glyph (w, s, glyph, px, data_x (w, W, x, slot_w), y, slot_w, slot_h, c);
+}
+
 static inline int
 data_glyph_width (GtkWidget *w, const char *glyph, int px)
 {

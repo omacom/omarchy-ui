@@ -134,14 +134,17 @@ impl Dialog {
                     if selected { accent } else { p.foreground },
                 )
             };
+            let btn_style = t.text_style(tk.font.caption);
+            let btn_w = t.space(88.0).max(rune::text::advance(&label, btn_style).ceil() + (tk.spacing.control_padding_x * 2) as f32);
             let mut b = row()
-                .size(t.space(88.0), t.space(34.0))
+                .size(btn_w, t.space(34.0))
                 .center()
+                .radius(t.radius())
                 .fill(color(fill))
                 .border(line as f32, color(edge))
                 .role("button")
                 .label(label.clone())
-                .child(text(label).font(t.text_style(tk.font.caption)).color(color(ink)));
+                .child(text(label).font(btn_style).color(color(ink)).single_line());
             if selected && attach.is_some() {
                 b = b.default_button();
             }

@@ -49,7 +49,7 @@ FocusScope {
     return String(text || "").toLowerCase().indexOf(String(query || "").toLowerCase()) >= 0
   }
 
-  readonly property int _headerHeight: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)
+  readonly property int _headerHeight: Math.max(Style.space(34), Style.font.heading + Style.spacing.controlPaddingY * 2)
   readonly property real _gap: Style.spacing.xxl
   readonly property bool _detailShown: showDetail && items.length > 0
   readonly property real _listWidth: _detailShown ? body.width - detailWidth - _gap * 2 - 1 : body.width
@@ -180,6 +180,7 @@ FocusScope {
 
         Column {
           visible: root.detail === null
+          y: Style.spacing.rowPaddingX / 2
           width: parent.width
           spacing: Style.spacing.sm
 

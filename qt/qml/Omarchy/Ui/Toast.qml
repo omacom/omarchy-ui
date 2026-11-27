@@ -45,13 +45,14 @@ BorderSurface {
     anchors.fill: parent
     anchors { leftMargin: root.borderLeft; rightMargin: root.borderRight; topMargin: root.borderTop; bottomMargin: root.borderBottom }
     visible: root.hasCursor
+    radius: Math.max(0, root.radius - Math.max(root.borderLeft, root.borderTop))
     color: Style.hoverFillFor(Commons.Color.notifications.text, Commons.Color.accent)
   }
 
   RowLayout {
     id: row
     x: root.contentLeftInset
-    y: root.contentTopInset
+    y: root.contentTopInset + Math.round((root.height - root.contentTopInset - root.contentBottomInset - (root.countdown >= 0 ? root._line : 0) - height) / 2)
     width: root.width - root.contentLeftInset - root.contentRightInset
     spacing: Style.space(12)
 
@@ -86,7 +87,7 @@ BorderSurface {
         visible: root.text !== ""
         textFormat: Text.PlainText
         text: root.text
-        color: Qt.darker(Commons.Color.notifications.text, 1.15)
+        color: Commons.Util.alpha(Commons.Color.notifications.text, 0.78)
         font.family: Style.font.family
         font.pixelSize: Style.font.body
         wrapMode: Text.Wrap

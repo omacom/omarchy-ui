@@ -40,8 +40,7 @@ draw_switch (GtkSnapshot *s, float x, float y, const SwitchMetrics *m, gboolean 
   }
   float kx = (float) (x + off_x + (on_x - off_x) * pos);
   float ky = y + roundf ((m->track_h - m->knob) / 2.0f);
-  GdkRGBA off = omarchy_rgba_darker (&p->foreground, 1.25);
-  GdkRGBA knob = checked ? p->selected.text : off;
+  GdkRGBA knob = checked ? p->selected.text : p->text_dim;
   omarchy_draw_fill (s, &GRAPHENE_RECT_INIT (kx, ky, m->knob, m->knob), rounded ? m->knob / 2.0f : 0, &knob);
 }
 

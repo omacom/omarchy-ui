@@ -77,8 +77,10 @@ private:
     if (m_kind == Square) {
       m_picker->pickSquare(p);
     } else {
-      const int k = m_picker->knobSize();
-      m_picker->pickStrip(this, qBound(0.0, (p.y() - k / 2.0) / qMax(1, height() - k), 1.0));
+      const int pad = shown().space(2);
+      const int k = qMax(8, width() - pad * 2);
+      const qreal span = qMax(1, height() - k - pad * 2);
+      m_picker->pickStrip(this, qBound(0.0, (p.y() - pad - k / 2.0) / span, 1.0));
     }
   }
   Kind m_kind;
@@ -294,11 +296,13 @@ void ColorPicker::keyOnPart(QWidget *part, QKeyEvent *e) {
 
 QRectF ColorPicker::squareKnobRect() const {
   const int k = knobSize();
-  return QRectF(jsRound(m_s * m_square->width() - k / 2.0), jsRound((1 - m_v) * m_square->height() - k / 2.0), k, k);
+  const qreal x = qBound<qreal>(0, jsRound(m_s * m_square->width() - k / 2.0), qMax(0, m_square->width() - k));
+  const qreal y = qBound<qreal>(0, jsRound((1 - m_v) * m_square->height() - k / 2.0), qMax(0, m_square->height() - k));
+  return QRectF(x, y, k, k);
 }
 
-// A Slider knob: `fill`, ringed in the surface color, 1.15× when hot.
-static void knob(QPainter &p, const QRectF &r, const QColor &fill, const QColor &ring, bool hot) {
+// SV square knob: concentric 2-tone ring (1px background outer + 1px foreground inner + opaque fill), 1.15× when hot.
+static void svKnob(QPainter &p, const QRectF &r, const QColor &fill, const Tokens &tk, bool hot) {
   p.save();
   if (hot) {
     const QPointF c = r.center();
@@ -306,7 +310,26 @@ static void knob(QPainter &p, const QRectF &r, const QColor &fill, const QColor 
     p.scale(1.15, 1.15);
     p.translate(-c);
   }
-  Paint::surface(p, r, r.width() / 2, fill, Border::flat(ring, qMax(1, shown().space(2))));
+  Paint::surface(p, r, r.width() / 2, tk.background());
+  const QRectF mid = r.adjusted(1, 1, -1, -1);
+  Paint::surface(p, mid, mid.width() / 2, tk.foreground());
+  const QRectF inner = mid.adjusted(1, 1, -1, -1);
+  Paint::surface(p, inner, inner.width() / 2, fill);
+  p.restore();
+}
+
+// Hue/alpha strip knob: 1px background outer ring + foreground inner circle, 1.15× when hot.
+static void stripKnobDraw(QPainter &p, const QRectF &r, const Tokens &tk, bool hot) {
+  p.save();
+  if (hot) {
+    const QPointF c = r.center();
+    p.translate(c);
+    p.scale(1.15, 1.15);
+    p.translate(-c);
+  }
+  Paint::surface(p, r, r.width() / 2, tk.background());
+  const QRectF inner = r.adjusted(1, 1, -1, -1);
+  Paint::surface(p, inner, inner.width() / 2, tk.foreground());
   p.restore();
 }
 
@@ -326,7 +349,6 @@ void ColorPicker::paintEvent(QPaintEvent *) {
   const Tokens &tk = t();
   QPainter p(this);
   const qreal small = tk.smallRadius();
-  const QColor ring = m_surface.isValid() ? m_surface : tk.color(QStringLiteral("surfaces.popups.background"));
   int rgb[3], pure[3];
   hsvToRgb(m_h, m_s, m_v, rgb);
   hsvToRgb(m_h, 1, 1, pure);
@@ -338,15 +360,16 @@ void ColorPicker::paintEvent(QPaintEvent *) {
   gradientRect(p, sq, small, Qt::Horizontal, {{0, QColor(255, 255, 255, 255)}, {1, QColor(255, 255, 255, 0)}});
   gradientRect(p, sq, small, Qt::Vertical, {{0, QColor(0, 0, 0, 0)}, {1, QColor(0, 0, 0, 255)}});
   auto *square = static_cast<PickerPart *>(m_square);
-  knob(p, squareKnobRect().translated(sq.topLeft()), opaque, ring, hasCursor() || square->hasFocus() || square->isDown());
+  svKnob(p, squareKnobRect().translated(sq.topLeft()), opaque, tk, hasCursor() || square->hasFocus() || square->isDown());
 
   // The hue strip, and the alpha strip (opaque at the top) over the track.
-  const int k = knobSize();
+  const int stripPad = tk.space(2);
   auto stripKnob = [&](QWidget *w, qreal fraction) {
     auto *part = static_cast<PickerPart *>(w);
     const QRectF r(w->geometry());
-    knob(p, QRectF(r.x() + jsRound((r.width() - k) / 2), r.y() + jsRound(fraction * (r.height() - k)), k, k), tk.foreground(), ring,
-         part->hasFocus() || part->isDown());
+    const qreal sk = qMax<qreal>(8, r.width() - stripPad * 2);
+    const qreal y = r.y() + stripPad + jsRound(fraction * qMax<qreal>(0, r.height() - sk - stripPad * 2));
+    stripKnobDraw(p, QRectF(r.x() + jsRound((r.width() - sk) / 2), y, sk, sk), tk, part->hasFocus() || part->isDown());
   };
   const QRectF hue(m_hueStrip->geometry());
   QGradientStops hues;
@@ -366,7 +389,7 @@ void ColorPicker::paintEvent(QPaintEvent *) {
   // The preview, beside the field.
   const QRect f = m_field->geometry();
   const Border normal = Border::flat(tk.border(State::Normal).color, 1);
-  Paint::surface(p, QRectF(0, f.y(), f.height(), f.height()), small, color(), normal);
+  Paint::surface(p, QRectF(0, f.y(), f.height(), f.height()), tk.radius(), color(), normal);
 
   // The palette.
   const QString current = hex().left(7);

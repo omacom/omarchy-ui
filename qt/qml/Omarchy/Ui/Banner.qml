@@ -45,8 +45,12 @@ BorderSurface {
   topPadding: Style.spacing.sm
   bottomPadding: Style.spacing.sm
 
+  readonly property real _buttonMinHeight: Math.ceil(buttonLineProbe.implicitHeight) + Style.spacing.controlPaddingY * 2 + Math.max(Style.normalBorderWidth, Style.hoverBorderWidth) * 2
+
   implicitWidth: row.implicitWidth + contentLeftInset + contentRightInset
-  implicitHeight: Math.max(Style.spacing.controlHeight, row.implicitHeight) + contentTopInset + contentBottomInset
+  implicitHeight: Math.max(Style.spacing.controlHeight, _buttonMinHeight, row.implicitHeight) + contentTopInset + contentBottomInset
+
+  Text { id: buttonLineProbe; visible: false; text: "x"; font.family: Style.font.family; font.pixelSize: Style.font.body }
 
   Accessible.role: Accessible.AlertMessage
   Accessible.name: text
@@ -54,8 +58,9 @@ BorderSurface {
   RowLayout {
     id: row
     x: root.contentLeftInset
-    y: root.contentTopInset + Math.round((root.height - root.contentTopInset - root.contentBottomInset - height) / 2)
+    y: root.contentTopInset
     width: root.width - root.contentLeftInset - root.contentRightInset
+    height: root.height - root.contentTopInset - root.contentBottomInset
     spacing: Style.spacing.controlGap
 
     Text {
@@ -79,6 +84,7 @@ BorderSurface {
     }
 
     Button {
+      id: actionButton
       visible: root.actionText !== ""
       text: root.actionText
       bordered: true

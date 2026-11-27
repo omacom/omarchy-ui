@@ -112,15 +112,12 @@ FocusScope {
         width: Style.spacing.xxxl
         height: parent.height
 
-        Text {
+        OpticalGlyph {
           visible: rowItem.modelData.branch
-          x: Math.round((parent.width - width) / 2)
-          anchors.verticalCenter: parent.verticalCenter
-          textFormat: Text.PlainText
+          anchors.fill: parent
           text: rowItem.modelData.open ? "󰅀" : "󰅂"
           color: Commons.Color.textDim
-          font.family: Style.font.family
-          font.pixelSize: Style.font.iconSmall
+          fontSize: Style.font.iconSmall
         }
 
         MouseArea {
@@ -131,16 +128,15 @@ FocusScope {
         }
       }
 
-      Text {
+      OpticalGlyph {
         id: glyph
         visible: rowItem.modelData.glyph !== ""
         x: chevronSlot.x + chevronSlot.width + Style.spacing.sm
-        anchors.verticalCenter: parent.verticalCenter
-        textFormat: Text.PlainText
+        width: Style.font.icon
+        height: parent.height
         text: rowItem.modelData.glyph
         color: rowItem.isSelected ? Style.selectedStateColor(root.foreground, root.accent) : Commons.Color.textDim
-        font.family: Style.font.family
-        font.pixelSize: Style.font.icon
+        fontSize: Style.font.icon
       }
 
       Text {

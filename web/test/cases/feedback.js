@@ -31,7 +31,7 @@ export const tests = {
     t.assert.equal(s.width, s.height, "square");
     t.assert.ok(s.height >= 14, `the line height of icon (${s.height})`);
     t.assert.equal(await t.eval(`__q("#s >>> .spin").getAnimations().length`), 0);
-    t.assert.equal(await t.eval(`getComputedStyle(__q("#p >>> .mark")).opacity`), "0.5", "a still pulse rests at half");
+    t.assert.equal(await t.eval(`getComputedStyle(__q("#p >>> .spin")).opacity`), "0.5", "a still pulse rests at half");
   },
 
   async empty_state_action_runs_on_click_and_keys(t) {

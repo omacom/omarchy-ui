@@ -118,14 +118,23 @@ Item {
     radius: root.cornerRadius
     color: Style.selectedFill
 
+    OpticalGlyph {
+      visible: root.glyph !== ""
+      anchors.fill: parent
+      text: root.glyph
+      color: Commons.Color.foreground
+      fontSize: Math.round(root.pixelSize * 0.5)
+    }
+
     Text {
+      visible: root.glyph === ""
       anchors.centerIn: parent
       textFormat: Text.PlainText
-      text: root.glyph !== "" ? root.glyph : root.initial
+      text: root.initial
       color: Commons.Color.foreground
       font.family: Style.font.family
       font.pixelSize: Math.round(root.pixelSize * 0.5)
-      font.bold: root.glyph === ""
+      font.bold: true
     }
   }
 

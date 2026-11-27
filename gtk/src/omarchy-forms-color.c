@@ -49,8 +49,10 @@ well_snapshot (GtkWidget *w, GtkSnapshot *s)
   float W = gtk_widget_get_width (w), H = gtk_widget_get_height (w);
   float rs = omarchy_radius_small ();
   gboolean hot = self->cursor || omarchy_widget_hovered (w) || omarchy_widget_focus_shown (w);
-  if (hot)
-    omarchy_draw_border (s, &GRAPHENE_RECT_INIT (0, 0, W, H), rs, &p->hover.border);
+  if (hot) {
+    float outer_r = rs > 0 ? MIN ((float) p->radius, rs + p->sm) : 0;
+    omarchy_draw_border (s, &GRAPHENE_RECT_INIT (0, 0, W, H), outer_r, &p->hover.border);
+  }
   float ww = omarchy_space (44), wh = omarchy_space (26);
   graphene_rect_t well = GRAPHENE_RECT_INIT (roundf ((W - ww) / 2), roundf ((H - wh) / 2), ww, wh);
   gtk_snapshot_save (s);
@@ -65,7 +67,7 @@ well_snapshot (GtkWidget *w, GtkSnapshot *s)
   float inset = p->normal.border.widths[0] + p->xxs;
   graphene_rect_t color = GRAPHENE_RECT_INIT (well.origin.x + inset, well.origin.y + inset, ww - 2 * inset, wh - 2 * inset);
   GdkRGBA swatch = self->role ? omarchy_role_color (self->role) : self->swatch;
-  omarchy_draw_fill (s, &color, MAX (0, rs - p->xxs), &swatch);
+  omarchy_draw_fill (s, &color, MAX (0.0f, rs - inset), &swatch);
   gtk_snapshot_restore (s);
 }
 
@@ -384,7 +386,7 @@ strip_snapshot (GtkWidget *w, GtkSnapshot *s)
     gboolean hot = (int) i == self->cursor || (int) i == self->hover;
     if (chosen || hot) {
       OmarchyBorder b = omarchy_border_flat (chosen ? &p->accent : &p->hover.border.color, ring);
-      omarchy_draw_border (s, &GRAPHENE_RECT_INIT (x, 0, cell, cell), rs > 0 ? rs + p->xxs : 0, &b);
+      omarchy_draw_border (s, &GRAPHENE_RECT_INIT (x, 0, cell, cell), rs > 0 ? rs + p->xxs + ring : 0, &b);
     }
     GdkRGBA c = sw->role ? omarchy_role_color (sw->role) : sw->color;
     OmarchyBorder rim = omarchy_border_flat (&p->track, 1);

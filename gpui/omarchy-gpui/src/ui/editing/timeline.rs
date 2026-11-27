@@ -216,7 +216,7 @@ impl RenderOnce for Timeline {
         let end = self.start + view.visible();
         let focus = focus_handle(&self.id, window, cx);
 
-        let mut e = div().id(self.id.clone()).relative().flex_shrink_0().w(px(w)).h(px(h)).overflow_hidden().track_focus(&focus);
+        let mut e = div().id(self.id.clone()).relative().flex_shrink_0().w(px(w)).h(px(h)).track_focus(&focus);
         let at = |x: f32, y: f32, ww: f32, hh: f32| div().absolute().left(px(x)).top(px(y)).w(px(ww)).h(px(hh));
 
         // ---- ruler: minor and major ticks, then labels
@@ -248,9 +248,10 @@ impl RenderOnce for Timeline {
         let label_size = tk.font.body_small;
         let label_h = tk.font.line_px(label_size) as f32;
         let pad = sp.control_padding_x as f32;
+        let mut lanes_wrap = at(0.0, ruler_h, w, (h - ruler_h).max(0.0)).overflow_hidden();
         for (ti, clips) in self.tracks.iter().enumerate() {
-            let ly = ruler_h + ti as f32 * (lane_h + lane_gap);
-            e = e.child(at(0.0, ly, w, lane_h).rounded(px(small)).bg(color(c.normal.fill)));
+            let ly = ti as f32 * (lane_h + lane_gap);
+            lanes_wrap = lanes_wrap.child(at(0.0, ly, w, lane_h).rounded(px(small)).bg(color(c.normal.fill)));
             for (ci, clip) in clips.iter().enumerate() {
                 let selected = self.selected == Some((ti, ci));
                 let x = view.x_at(clip.start);
@@ -265,11 +266,12 @@ impl RenderOnce for Timeline {
                 } else {
                     (Look::new(c.normal.fill, c.normal.border.clone()), Look::new(c.hover.fill, c.hover.border.clone()))
                 };
+                let label_inset = if selected { t.space(8.0) + pad } else { pad };
                 let text = label_elided(&t, clip.label.clone(), label_size, selected, t.fg())
                     .absolute()
-                    .left(px(pad))
+                    .left(px(label_inset))
                     .top(px(((ch - label_h) / 2.0).floor()))
-                    .w(px((cw - pad * 2.0).max(0.0)));
+                    .w(px((cw - label_inset * 2.0).max(0.0)));
                 let clip_id = ElementId::NamedChild(std::sync::Arc::new(self.id.clone()), format!("clip-{ti}-{ci}").into());
                 let base = div().id(clip_id).size_full().cursor(CursorStyle::PointingHand);
                 let mut body = chrome(base, &t, &rest, &hot, selected, px(small)).child(text);
@@ -306,9 +308,10 @@ impl RenderOnce for Timeline {
                         body = body.child(div().absolute().left(px(hx)).top_0().child(handle));
                     }
                 }
-                e = e.child(at(x, ly + inset, cw, ch).child(body));
+                lanes_wrap = lanes_wrap.child(at(x, ly + inset, cw, ch).child(body));
             }
         }
+        e = e.child(lanes_wrap);
 
         // ---- playhead
         if self.position >= self.start && self.position <= end {
@@ -318,9 +321,10 @@ impl RenderOnce for Timeline {
             let hot = self.cursor || focus.is_focused(window);
             let ink = if hot { color(hot_accent(&t, accent)) } else { color(accent) };
             let x = view.x_at(self.position) - (head / 2.0).round();
+            let playhead_bottom = if n > 0 { ruler_h + (n as f32 - 1.0) * (lane_h + lane_gap) + lane_h } else { h };
             e = e
                 .child(at(x, ruler_h - head, head, head).rounded(px(small)).bg(ink))
-                .child(at(x + ((head - line_w) / 2.0).round(), ruler_h, line_w, h - ruler_h).bg(ink));
+                .child(at(x + ((head - line_w) / 2.0).round(), ruler_h, line_w, (playhead_bottom - ruler_h).max(0.0)).bg(ink));
         }
 
         // ---- keys, wheel, scrubbing
@@ -434,8 +438,8 @@ impl RenderOnce for Scrubber {
         let tw = text_width(window, &t, &total, size);
         let gap = sp.control_gap as f32;
         let bar_x = ew + gap;
-        let bar_w = w - tw - gap - bar_x;
-        let track_w = bar_w - knob;
+        let bar_w = (w - tw - gap - bar_x).max(0.0);
+        let track_w = (bar_w - knob).max(0.0);
         let progress = if self.duration > 0.0 { (self.position / self.duration).clamp(0.0, 1.0) } else { 0.0 };
         let mid = h / 2.0;
         let ty = ((h - line) / 2.0).floor();
@@ -443,21 +447,23 @@ impl RenderOnce for Scrubber {
         let hot = self.cursor || focus.is_focused(window) || dragging(&self.id, window, cx);
 
         let ring = 1f32.max(t.space(2.0));
-        let surface = color(tk.surfaces.popups.background);
-        let played = (track_w * progress).round();
+        let inner_knob = 4f32.max(knob - ring * 2.0);
+        let track_x = knob / 2.0;
+        let knob_center = track_x + (track_w * progress).round();
+        let fill_w = (knob_center - knob / 2.0 - track_x).clamp(0.0, track_w);
+        let unfilled_start = (knob_center + knob / 2.0).clamp(track_x, track_x + track_w);
+        let unfilled_w = (track_x + track_w - unfilled_start).max(0.0);
         let knob_at = |scale: f32| {
-            let k = (knob * scale).round();
+            let k = (inner_knob * scale).round();
             div()
                 .absolute()
-                .left(px(played + (knob - k) / 2.0))
+                .left(px(knob_center - k / 2.0))
                 .top(px(mid - k / 2.0))
                 .size(px(k))
                 .rounded(px(k / 2.0))
                 .bg(t.fg())
-                .border(px(ring))
-                .border_color(surface)
         };
-        let bar_line = |ww: f32, c| div().absolute().left(px(knob / 2.0)).top(px(mid - track_h / 2.0)).w(px(ww)).h(px(track_h)).rounded(px(track_h / 2.0)).bg(c);
+        let bar_seg = |x: f32, ww: f32, c| div().absolute().left(px(x)).top(px(mid - track_h / 2.0)).w(px(ww)).h(px(track_h)).rounded(px(track_h / 2.0)).bg(c);
         let mut bar = div()
             .id(self.id.clone())
             .absolute()
@@ -467,9 +473,13 @@ impl RenderOnce for Scrubber {
             .h(px(h))
             .group(HOT)
             .cursor(CursorStyle::PointingHand)
-            .track_focus(&focus)
-            .child(bar_line(track_w, t.track()))
-            .child(bar_line(played, t.fg()));
+            .track_focus(&focus);
+        if fill_w > 0.0 {
+            bar = bar.child(bar_seg(track_x, fill_w, t.fg()));
+        }
+        if unfilled_w > 0.0 {
+            bar = bar.child(bar_seg(unfilled_start, unfilled_w, t.track()));
+        }
         bar = if hot {
             bar.child(knob_at(1.15))
         } else {

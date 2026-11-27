@@ -63,6 +63,17 @@ layout_height (PangoLayout *l, int line)
   return (int) ceil (r.height / (double) PANGO_SCALE);
 }
 
+static float
+confirm_button_width (GtkWidget *w, const char *text)
+{
+  const OmarchyTokens *t = omarchy_tokens ();
+  g_autoptr (PangoLayout) l = omarchy_layout (w, text, t->caption, FALSE);
+  PangoRectangle logical;
+  pango_layout_get_extents (l, NULL, &logical);
+  float tw = ceilf (logical.width / (float) PANGO_SCALE);
+  return MAX ((float) omarchy_space (88), tw + t->control_padding_x * 2);
+}
+
 static Geo
 geo (OmarchyConfirmDialog *self, float W, float H)
 {
@@ -78,16 +89,18 @@ geo (OmarchyConfirmDialog *self, float W, float H)
   int mh = layout_height (l, omarchy_line_height (t->title));
   float ch = g.inset[0] + g.inset[2] + mh + omarchy_space (20) + omarchy_space (34);
   g.card = GRAPHENE_RECT_INIT (roundf ((W - cw) / 2), roundf ((H - ch) / 2), cw, ch);
-  float bwid = omarchy_space (88), bh = omarchy_space (34), gap = omarchy_space (10);
+  float bw0 = confirm_button_width (GTK_WIDGET (self), cancel_text (self));
+  float bw1 = confirm_button_width (GTK_WIDGET (self), confirm_text (self));
+  float bh = omarchy_space (34), gap = omarchy_space (10);
   float right = g.card.origin.x + cw - g.inset[1], bottom = g.card.origin.y + ch - g.inset[2];
   gboolean rtl = gtk_widget_get_direction (GTK_WIDGET (self)) == GTK_TEXT_DIR_RTL;
   if (rtl) {
     float left = g.card.origin.x + g.inset[3];
-    g.buttons[1] = GRAPHENE_RECT_INIT (left, bottom - bh, bwid, bh);
-    g.buttons[0] = GRAPHENE_RECT_INIT (left + bwid + gap, bottom - bh, bwid, bh);
+    g.buttons[1] = GRAPHENE_RECT_INIT (left, bottom - bh, bw1, bh);
+    g.buttons[0] = GRAPHENE_RECT_INIT (left + bw1 + gap, bottom - bh, bw0, bh);
   } else {
-    g.buttons[1] = GRAPHENE_RECT_INIT (right - bwid, bottom - bh, bwid, bh);
-    g.buttons[0] = GRAPHENE_RECT_INIT (right - 2 * bwid - gap, bottom - bh, bwid, bh);
+    g.buttons[1] = GRAPHENE_RECT_INIT (right - bw1, bottom - bh, bw1, bh);
+    g.buttons[0] = GRAPHENE_RECT_INIT (right - bw1 - gap - bw0, bottom - bh, bw0, bh);
   }
   return g;
 }
@@ -129,7 +142,7 @@ snapshot (GtkWidget *w, GtkSnapshot *s)
     GdkRGBA bc = destructive ? (sel ? p->urgent : omarchy_rgba_alpha (&p->urgent, 0.56))
                              : (sel ? p->accent : omarchy_rgba_alpha (&p->foreground, 0.38));
     OmarchyBorder b = omarchy_border_flat (&bc, p->normal.border.widths[0]);
-    omarchy_draw_surface (s, &g.buttons[i], 0, &fill, &b);
+    omarchy_draw_surface (s, &g.buttons[i], p->radius, &fill, &b);
     GdkRGBA ink = destructive ? (sel ? p->urgent : p->foreground) : (sel ? p->accent : p->foreground);
     g_autoptr (PangoLayout) bl = omarchy_layout (w, i == 0 ? cancel_text (self) : confirm_text (self), p->caption, FALSE);
     int tw;

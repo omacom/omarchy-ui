@@ -78,7 +78,7 @@ impl RenderOnce for Slider {
         let height = t.space(22.0).max(knob + sp.md as f32);
         let (min, max, value, step) = (self.min, self.max, self.value, self.step);
         let progress = if max > min { ((value - min) / (max - min)).clamp(0.0, 1.0) } else { 0.0 };
-        let track_w = width - knob;
+        let track_w = (width - knob).max(0.0);
         let mid = height / 2.0;
         let focus = focus_handle(&self.id, window, cx);
         let drag = keyed_state(&self.id, "slider", window, cx, Drag::default);
@@ -88,54 +88,59 @@ impl RenderOnce for Slider {
         };
 
         let track_color = color(tk.palette.foreground.with_alpha(tk.controls.selected.fill.a as f64 / 255.0));
-        let mut e = div()
-            .id(self.id)
-            .relative()
-            .flex_shrink_0()
-            .w(px(width))
-            .h(px(height))
-            .track_focus(&focus)
-            .child(
+        let ring = 1f32.max(t.space(2.0));
+        let inner_knob = 4f32.max(knob - ring * 2.0);
+        let track_x = knob / 2.0;
+        let knob_center = track_x + track_w * progress;
+        let fill_end = (knob_center - knob / 2.0).clamp(track_x, track_x + track_w);
+        let fill_w = (fill_end - track_x).max(0.0);
+        let unfilled_start = (knob_center + knob / 2.0).clamp(track_x, track_x + track_w);
+        let unfilled_w = (track_x + track_w - unfilled_start).max(0.0);
+        let mut e = div().id(self.id).relative().flex_shrink_0().w(px(width)).h(px(height)).track_focus(&focus);
+        if fill_w > 0.0 {
+            e = e.child(
                 div()
                     .absolute()
-                    .left(px(knob / 2.0))
+                    .left(px(track_x))
                     .top(px(mid - track_h / 2.0))
-                    .w(px(track_w))
-                    .h(px(track_h))
-                    .rounded(px(track_h / 2.0))
-                    .bg(track_color),
-            )
-            .child(
-                div()
-                    .absolute()
-                    .left(px(knob / 2.0))
-                    .top(px(mid - track_h / 2.0))
-                    .w(px(track_w * progress))
+                    .w(px(fill_w))
                     .h(px(track_h))
                     .rounded(px(track_h / 2.0))
                     .bg(t.fg()),
             );
-        if self.ticks > 1 {
+        }
+        if unfilled_w > 0.0 {
+            e = e.child(
+                div()
+                    .absolute()
+                    .left(px(unfilled_start))
+                    .top(px(mid - track_h / 2.0))
+                    .w(px(unfilled_w))
+                    .h(px(track_h))
+                    .rounded(px(track_h / 2.0))
+                    .bg(track_color),
+            );
+        }
+        if self.ticks > 2 {
             let tw = 1f32.max(t.space(2.0));
             let th = track_h + t.space(4.0);
-            for i in 0..self.ticks {
-                let x = knob / 2.0 + track_w * (i as f32 / (self.ticks - 1) as f32) - tw / 2.0;
-                e = e.child(div().absolute().left(px(x)).top(px(mid - th / 2.0)).w(px(tw)).h(px(th)).rounded(px(1.0)).bg(surface));
+            for i in 1..(self.ticks - 1) {
+                let cx = track_x + track_w * (i as f32 / (self.ticks - 1) as f32);
+                if (cx - knob_center).abs() > knob / 2.0 {
+                    e = e.child(div().absolute().left(px(cx - tw / 2.0)).top(px(mid - th / 2.0)).w(px(tw)).h(px(th)).rounded(px(1.0)).bg(surface));
+                }
             }
         }
-        let ring = 1f32.max(t.space(2.0));
         let hot = self.cursor || focus.is_focused(window);
-        let k = if hot { (knob * 1.15).round() } else { knob };
+        let k = if hot { (inner_knob * 1.15).round() } else { inner_knob };
         e = e.child(
             div()
                 .absolute()
-                .left(px(knob / 2.0 + track_w * progress - k / 2.0))
+                .left(px(knob_center - k / 2.0))
                 .top(px(mid - k / 2.0))
                 .size(px(k))
                 .rounded(px(k / 2.0))
-                .bg(t.fg())
-                .border(px(ring))
-                .border_color(surface),
+                .bg(t.fg()),
         );
 
         // Where the slider is, for the pointer; and the drag, followed window-wide.

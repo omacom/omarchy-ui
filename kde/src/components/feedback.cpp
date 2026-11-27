@@ -502,9 +502,11 @@ Banner::Geo Banner::geometry(qreal width) const {
   g.textH = ceilPx(Paint::wrappedHeight(body, m_text, g.textW));
   g.actionX = g.textX + g.textW + gap;
   g.dismissX = rowW - m_dismiss->sizeHint().width();
-  g.rowH = qMax(h, g.textH);
-  g.height = qMax<qreal>(tk.spacing("controlHeight"), g.rowH) + in.top() + in.bottom();
-  g.rowY = in.top() + std::round((g.height - in.top() - in.bottom() - g.rowH) / 2);
+  const int borderMax = qMax(tk.border(State::Normal).maxWidth(), tk.border(State::Hover).maxWidth());
+  const qreal buttonMinH = ceilPx(Paint::lineHeight(body)) + tk.spacing("controlPaddingY") * 2 + borderMax * 2;
+  g.rowH = qMax<qreal>(qMax<qreal>(tk.spacing("controlHeight"), buttonMinH), qMax(h, g.textH));
+  g.height = g.rowH + in.top() + in.bottom();
+  g.rowY = in.top();
   return g;
 }
 
@@ -526,9 +528,10 @@ int Banner::heightForWidth(int w) const { return ceilPx(geometry(w).height); }
 void Banner::place() {
   const Geo g = geometry(width());
   const QMargins in = insets();
+  const qreal innerH = qMax<qreal>(g.rowH, height() - in.top() - in.bottom());
   auto centerIn = [&](QWidget *w, qreal x) {
     const QSize s = w->sizeHint();
-    w->setGeometry(QRect(int(in.left() + x), int(g.rowY + std::round((g.rowH - s.height()) / 2)), s.width(), s.height()));
+    w->setGeometry(QRect(int(in.left() + x), int(in.top() + std::round((innerH - s.height()) / 2)), s.width(), s.height()));
   };
   if (!m_actionText.isEmpty()) centerIn(m_action, g.actionX);
   if (m_dismissible) centerIn(m_dismiss, g.dismissX);
@@ -543,10 +546,11 @@ void Banner::paintEvent(QPaintEvent *) {
   Paint::surface(p, QRectF(rect()), tk.radius(), tk.fill(State::Normal), Border::flat(tone, bw));
   const Geo g = geometry(width());
   const QMargins in = insets();
+  const qreal innerH = qMax<qreal>(g.rowH, height() - in.top() - in.bottom());
   const QFont icon = tk.font("icon"), body = tk.font("body");
   const qreal gh = ceilPx(Paint::lineHeight(icon));
-  Paint::text(p, QPointF(in.left(), g.rowY + std::round((g.rowH - gh) / 2)), icon, tone, toneGlyph());
-  Paint::wrapped(p, QRectF(in.left() + g.textX, g.rowY + std::round((g.rowH - g.textH) / 2), g.textW, g.textH), body, tk.foreground(), m_text);
+  Paint::text(p, QPointF(in.left(), in.top() + std::round((innerH - gh) / 2)), icon, tone, toneGlyph());
+  Paint::wrapped(p, QRectF(in.left() + g.textX, in.top() + std::round((innerH - g.textH) / 2), g.textW, g.textH), body, tk.foreground(), m_text);
 }
 
 // ----------------------------------------------------------------------------------------- Toast
@@ -585,8 +589,10 @@ void Toast::setActionText(const QString &t) {
   place();
 }
 void Toast::setCountdown(qreal left) {
+  const bool had = m_countdown >= 0;
   m_countdown = left;
-  update();
+  if (had != (left >= 0)) place();
+  else update();
 }
 
 static Border toastBorder(const Tokens &tk) { return tk.border(QStringLiteral("surfaces.notifications.border")); }
@@ -638,10 +644,12 @@ void Toast::place() {
   const Tokens &tk = t();
   const Geo g = geometry(width());
   const Border b = toastBorder(tk);
+  const qreal py = tk.space(10);
+  const qreal line = m_countdown >= 0 ? qMax(1, tk.space(2)) : 0;
+  const qreal y0 = b.top + py + std::floor((height() - b.top - b.bottom - py * 2 - line - g.rowH) / 2.0 + 0.5);
   if (!m_actionText.isEmpty()) {
     const QSize s = m_action->sizeHint();
-    m_action->setGeometry(
-        QRect(int(b.left + tk.space(12) + g.actionX), int(b.top + tk.space(10) + std::round((g.rowH - s.height()) / 2)), s.width(), s.height()));
+    m_action->setGeometry(QRect(int(b.left + tk.space(12) + g.actionX), int(y0 + std::round((g.rowH - s.height()) / 2)), s.width(), s.height()));
   }
   update();
 }
@@ -653,10 +661,15 @@ void Toast::paintEvent(QPaintEvent *) {
   const Border b = toastBorder(tk);
   const QColor text = tk.color(QStringLiteral("surfaces.notifications.text"));
   Paint::surface(p, r, tk.radius(), tk.color(QStringLiteral("surfaces.notifications.background")), b);
-  // The keyboard's toast: the hover fill inside the border.
-  if (hasCursor()) Paint::surface(p, r.adjusted(b.left, b.top, -b.right, -b.bottom), 0, tk.fill(State::Hover, text));
+  // The keyboard's toast: the hover fill inside the border, rounded to the inner radius.
+  if (hasCursor())
+    Paint::surface(p, r.adjusted(b.left, b.top, -b.right, -b.bottom), qMax<qreal>(0, tk.radius() - qMax(b.left, b.top)),
+                   tk.fill(State::Hover, text));
   const Geo g = geometry(width());
-  const qreal x0 = b.left + tk.space(12), y0 = b.top + tk.space(10);
+  const qreal py = tk.space(10);
+  const qreal line = m_countdown >= 0 ? qMax(1, tk.space(2)) : 0;
+  const qreal x0 = b.left + tk.space(12);
+  const qreal y0 = b.top + py + std::floor((r.height() - b.top - b.bottom - py * 2 - line - g.rowH) / 2.0 + 0.5);
   if (!m_glyph.isEmpty()) {
     const QFont f = tk.font("iconLarge");
     const qreal gh = ceilPx(Paint::lineHeight(f));
@@ -666,9 +679,9 @@ void Toast::paintEvent(QPaintEvent *) {
   const qreal cy = y0 + std::round((g.rowH - ceilPx(colH)) / 2);
   const QFont title = tk.font("body", true);
   Paint::text(p, QPointF(x0 + g.colX, cy), title, text, Paint::elided(title, m_title, g.colW));
-  if (!m_text.isEmpty()) Paint::wrapped(p, QRectF(x0 + g.colX, cy + g.textY, g.colW, g.textH), tk.font("body"), Paint::darker(text, 1.15), m_text);
+  if (!m_text.isEmpty()) Paint::wrapped(p, QRectF(x0 + g.colX, cy + g.textY, g.colW, g.textH), tk.font("body"), Paint::alpha(text, 0.78), m_text);
   if (m_countdown >= 0) {
-    const qreal line = qMax(1, tk.space(2)), radius = tk.radius();
+    const qreal radius = tk.radius();
     const qreal w = (r.width() - b.left - b.right - radius * 2) * qBound(0.0, m_countdown, 1.0);
     Paint::surface(p, QRectF(b.left + radius, r.height() - b.bottom - line, w, line), 0, tk.color(QStringLiteral("surfaces.notifications.countdown")));
   }

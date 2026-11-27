@@ -57,8 +57,9 @@ void ColorWell::paintEvent(QPaintEvent *) {
   QPainter p(this);
   const QRectF pr = paintRect();
   const int radius = tk.smallRadius();
-  if (isHot() || hasFocus()) Paint::surface(p, pr, radius, Qt::transparent, tk.border(State::Hover));
   const int pad = tk.spacing("sm");
+  if (isHot() || hasFocus())
+    Paint::surface(p, pr, radius > 0 ? qMin(tk.radius(), radius + pad) : 0, Qt::transparent, tk.border(State::Hover));
   const QRectF well(pr.x() + pad, pr.y() + pad, tk.space(44), tk.space(26));
   if (m_scale != 1) {
     p.translate(well.center());
@@ -68,7 +69,7 @@ void ColorWell::paintEvent(QPaintEvent *) {
   const Border b = tk.border(State::Normal);
   Paint::surface(p, well, radius, tk.fill(State::Normal), b);
   const int inset = b.top + tk.spacing("xxs");
-  Paint::surface(p, well.adjusted(inset, inset, -inset, -inset), qMax(0, radius - tk.spacing("xxs")), swatch());
+  Paint::surface(p, well.adjusted(inset, inset, -inset, -inset), qMax(0, radius - inset), swatch());
 }
 
 void ColorWell::give(bool pressed) {
@@ -184,7 +185,8 @@ void SwatchStrip::paintEvent(QPaintEvent *) {
     const QRectF cell = cellRect(i);
     const bool chosen = i == m_current, hot = i == m_cursor || i == m_hover;
     if (chosen || hot)
-      Paint::surface(p, cell, radius > 0 ? radius + gap : 0, Qt::transparent, Border::flat(chosen ? tk.accent() : tk.border(State::Hover).color, ring));
+      Paint::surface(p, cell, radius > 0 ? radius + gap + ring : 0, Qt::transparent,
+                     Border::flat(chosen ? tk.accent() : tk.border(State::Hover).color, ring));
     const QRectF c(cell.x() + Paint::centered(cell.width(), chip), cell.y() + Paint::centered(cell.height(), chip), chip, chip);
     Paint::surface(p, c, radius, cs[i], Border::flat(tk.track(), 1));
   }
@@ -322,9 +324,13 @@ QRectF Dialog::buttonRect(int index) const {
   const Tokens &tk = shown();
   const int inset = tk.border(State::Normal).top + tk.space(18);
   const QRectF card = cardRect();
-  const int bw = tk.space(88), bh = tk.space(34), gap = tk.space(10);
+  const QFont f = tk.font("caption");
+  const int minW = tk.space(88), padX = tk.spacing("controlPaddingX");
+  const int w0 = qMax(minW, int(std::ceil(Paint::textWidth(f, secondaryText()) - 1e-6)) + padX * 2);
+  const int w1 = qMax(minW, int(std::ceil(Paint::textWidth(f, primaryText()) - 1e-6)) + padX * 2);
+  const int bh = tk.space(34), gap = tk.space(10);
   const qreal right = card.right() - inset;
-  return QRectF(index == 1 ? right - bw : right - bw * 2 - gap, card.bottom() - inset - bh, bw, bh);
+  return QRectF(index == 1 ? right - w1 : right - w1 - gap - w0, card.bottom() - inset - bh, index == 1 ? w1 : w0, bh);
 }
 
 void Dialog::place() {
@@ -370,7 +376,7 @@ void Dialog::paintEvent(QPaintEvent *) {
     const QColor line = urgentButton ? (selected ? urgent : Paint::alpha(urgent, 0.56)) : (selected ? selText : Paint::alpha(fg, 0.38));
     const QColor text = urgentButton ? (selected ? urgent : fg) : (selected ? selText : fg);
     const QRectF r = buttonRect(i);
-    Paint::surface(p, r, 0, fill, Border::flat(line, bw));
+    Paint::surface(p, r, tk.radius(), fill, Border::flat(line, bw));
     const QSizeF s = Paint::textSize(f, labels[i]);
     Paint::text(p, QPointF(r.x() + Paint::centered(r.width(), s.width()), r.y() + Paint::centered(r.height(), s.height())), f, text, labels[i]);
   }

@@ -228,7 +228,7 @@ impl RenderOnce for SearchList {
         let bw = menu.border.widths.map(|w| w as f32);
         let pad = sp.panel_padding as f32;
         let (w, h) = self.size.unwrap_or((t.space(480.0), t.space(360.0)));
-        let header_h = t.space(34.0).max((f.title + sp.control_padding_y * 2) as f32);
+        let header_h = t.space(34.0).max((f.heading + sp.control_padding_y * 2) as f32);
         let inner_w = w - bw[1] - bw[3] - pad * 2.0;
         let body_h = h - bw[0] - bw[2] - pad * 2.0 - header_h - sp.md as f32;
         let n = self.items.len();
@@ -330,6 +330,7 @@ impl RenderOnce for SearchList {
                             .flex()
                             .flex_col()
                             .w_full()
+                            .pt(px(sp.row_padding_x as f32 / 2.0))
                             .gap(px(sp.sm as f32))
                             .child(label_elided(&t, item.title, f.title, true, color(menu.text)))
                             .child(paragraph(&t, item.detail, f.body, t.dim()).w_full())

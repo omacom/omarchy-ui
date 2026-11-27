@@ -14,7 +14,11 @@ use crate::{Paint, color};
 /// A caption-sized bold header in `textDim`: what heads a panel section.
 pub fn section_header(t: &Paint, text: impl Into<SharedString>) -> Div {
     let size = t.tokens().font.caption;
-    label(t, text, size, true, t.dim()).pt(px((size as f32 * 0.15).ceil()))
+    div()
+        .flex()
+        .flex_shrink_0()
+        .pt(px((size as f32 * 0.15).ceil()))
+        .child(label_elided(t, text, size, true, t.dim()))
 }
 
 /// A 1px rule in the foreground at 12%.
@@ -296,13 +300,14 @@ pub struct MenuRow {
     label: SharedString,
     checked: bool,
     highlighted: bool,
+    small_radius: bool,
     on_click: Option<Handler<ClickEvent>>,
 }
 
 impl MenuRow {
     pub fn new(label: impl Into<SharedString>) -> MenuRow {
         let label = label.into();
-        MenuRow { id: id_for("menu-row", &label), label, checked: false, highlighted: false, on_click: None }
+        MenuRow { id: id_for("menu-row", &label), label, checked: false, highlighted: false, small_radius: false, on_click: None }
     }
     pub fn id(mut self, id: impl Into<ElementId>) -> Self {
         self.id = id.into();
@@ -314,6 +319,10 @@ impl MenuRow {
     }
     pub fn highlighted(mut self, on: bool) -> Self {
         self.highlighted = on;
+        self
+    }
+    pub(crate) fn small_radius(mut self, on: bool) -> Self {
+        self.small_radius = on;
         self
     }
     pub fn on_click(mut self, f: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self {
@@ -338,7 +347,7 @@ impl RenderOnce for MenuRow {
             .items_center()
             .justify_between()
             .px(px(sp.control_padding_x as f32))
-            .rounded(t.radius())
+            .rounded(if self.small_radius { t.radius_small() } else { t.radius() })
             .bg(if self.highlighted { hover } else { color(Rgba::TRANSPARENT) })
             .hover(move |s| s.bg(hover))
             .child(label_elided(&t, self.label, tk.font.body, false, color(tk.surfaces.popups.text)));
@@ -397,24 +406,24 @@ impl RenderOnce for SettingRow {
         let tk = t.tokens();
         let sp = &tk.spacing;
         let (ink, dim) = if self.disabled { (t.faint(), t.faint()) } else { (t.fg(), t.dim()) };
+        let pad_y = sp.md as f32;
         let mut words = div()
             .flex()
             .flex_col()
             .flex_1()
             .min_w_0()
+            .py(px(pad_y))
             .gap(px(sp.xxs as f32))
             .child(label_elided(&t, self.label, tk.font.body, false, ink));
         if !self.description.is_empty() {
             words = words.child(paragraph(&t, self.description, tk.font.caption, dim));
         }
-        let pad_y = sp.md as f32;
         let mut r = div()
             .flex()
             .flex_row()
             .items_center()
             .gap(px(sp.xxl as f32))
             .px(px(sp.row_padding_x as f32))
-            .py(px(pad_y))
             .min_h(px(sp.control_height as f32 + pad_y * 2.0))
             .rounded(t.radius())
             .child(words);
@@ -422,7 +431,7 @@ impl RenderOnce for SettingRow {
             r = r.bg(color(tk.controls.hover.fill));
         }
         if let Some(c) = self.control {
-            r = r.child(div().flex().flex_row().items_center().gap(px(sp.md as f32)).child(c));
+            r = r.child(div().flex().flex_row().items_center().py(px(sp.xxs as f32)).gap(px(sp.md as f32)).child(c));
         }
         match self.width {
             Some(w) => r.w(px(w)).flex_shrink_0(),
@@ -576,7 +585,7 @@ impl Dialog {
 }
 
 impl RenderOnce for Dialog {
-    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let t = Paint::of(cx);
         let theme = crate::Theme::get(cx);
         let tk = t.tokens();
@@ -603,17 +612,21 @@ impl RenderOnce for Dialog {
                     if selected { accent } else { p.foreground },
                 )
             };
+            let look = super::Look::new(fill, BorderSpec { color: edge, widths: [line as f64; 4], gradient: None });
+            let w = t
+                .space(88.0)
+                .max(super::navigation::advance(window, &t, &text, tk.font.caption, false).ceil() + (tk.spacing.control_padding_x * 2) as f32);
             let b = div()
                 .id(text.clone())
+                .relative()
                 .flex()
                 .flex_shrink_0()
                 .items_center()
                 .justify_center()
-                .w(px(t.space(88.0)))
+                .w(px(w))
                 .h(px(t.space(34.0)))
-                .bg(color(fill))
-                .border(px(line))
-                .border_color(color(edge))
+                .rounded(t.radius())
+                .child(super::layer(&look, t.radius()))
                 .child(label(&t, text, tk.font.caption, false, color(ink)));
             match handler {
                 Some(f) => b.on_click(move |e, w, cx| f(e, w, cx)),

@@ -124,26 +124,33 @@ class _Head(Draw):
         return sum(d.size(t)[0] for d in self.trailing) + max(0, n - 1) + (1 if n > 0 else 0)
 
     def size(self, t) -> tuple[int, int]:
-        lines = max(width(self.text), width(self.subtitle))
+        tw = self.trailing_w(t)
         trail_h = max((d.size(t)[1] for d in self.trailing), default=0)
-        h = max(1 if not self.subtitle else 2, trail_h)
-        return (self.width if self.width is not None else lines + self.trailing_w(t), h)
+        lines_h = 1 if not self.subtitle else 2
+        h = max(lines_h, trail_h)
+        if trail_h > 1 or self.centered:
+            natural = max(width(self.text), width(self.subtitle)) + tw
+        else:
+            natural = max(width(self.text) + tw, width(self.subtitle))
+        return (self.width if self.width is not None else natural, h)
 
     def draw(self, t, area: Rect, buf: Buffer) -> None:
         tw = self.trailing_w(t)
-        lines_w = max(0, area.width - tw)
-
-        def put_line(y: int, s: str, i: Ink) -> None:
-            if self.centered:
-                text_center(t, buf, area.x, y, lines_w, s, i)
-            else:
-                text_fit(t, buf, area.x, y, s, lines_w, i)
-
-        put_line(area.y, self.text, Ink(t.fg(), bold=True))
-        if self.subtitle:
-            put_line(area.y + 1, self.subtitle, Ink(t.dim()))
-        x = max(0, area.right - tw) + (1 if tw > 0 else 0)
         lines_h = 1 if not self.subtitle else 2
+        title_w = max(0, area.width - tw)
+        trail_on_sub = any(((max(lines_h, h) - h) // 2) + h > 1 for _, h in (d.size(t) for d in self.trailing))
+        sub_w = title_w if (self.centered or trail_on_sub) else area.width
+
+        def put_line(y: int, w: int, s: str, i: Ink) -> None:
+            if self.centered:
+                text_center(t, buf, area.x, y, w, s, i)
+            else:
+                text_fit(t, buf, area.x, y, s, w, i)
+
+        put_line(area.y, title_w, self.text, Ink(t.fg(), bold=True))
+        if self.subtitle:
+            put_line(area.y + 1, sub_w, self.subtitle, Ink(t.dim()))
+        x = max(0, area.right - tw) + (1 if tw > 0 else 0)
         for d in self.trailing:
             w, h = d.size(t)
             dy = (max(lines_h, h) - h) // 2
@@ -198,7 +205,7 @@ class Pane(Draw):
         c = t.shown.controls
         l, tp, r, b = self.edge()
         if self.bordered:
-            fill(t, buf, area, c.normal.fill)
+            fill(t, buf, paint.inset(area, 1, 1), c.normal.fill)
             frame(t, buf, area, c.normal.border.color)
         elif self.divider is Side.LEFT:
             vline(t, buf, area.x, area.y, area.height, "│", t.track())

@@ -377,10 +377,13 @@ func (f CropFrame) Draw(t *Theme, area Rect, buf *Buffer) {
 		return
 	}
 	for i := 1; i < 3; i++ {
-		gx, gy := area.X+(w*i)/3, area.Y+(h*i)/3
+		gx := area.X + (w*i)/3
 		for dy := 1; dy < h-1; dy++ {
 			omarchy.Put(t, buf, gx, area.Y+dy, "┆", t.Track())
 		}
+	}
+	for i := 1; i < 3; i++ {
+		gy := area.Y + (h*i)/3
 		for dx := 1; dx < w-1; dx++ {
 			x := area.X + dx
 			sym := "┄"

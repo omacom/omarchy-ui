@@ -267,7 +267,7 @@ impl SearchList {
         let bw = menu.border.widths.map(|w| w as f32);
         let pad = sp.panel_padding as f32;
         let (w, h) = self.size.unwrap_or((t.space(480.0), t.space(360.0)));
-        let header_h = t.space(34.0).max((f.title + sp.control_padding_y * 2) as f32);
+        let header_h = t.space(34.0).max((f.heading + sp.control_padding_y * 2) as f32);
         let inner_w = w - bw[1] - bw[3] - pad * 2.0;
         let body_h = h - bw[0] - bw[2] - pad * 2.0 - header_h - sp.md as f32;
         let n = self.items.len();
@@ -328,6 +328,7 @@ impl SearchList {
                         let item = cursor.map(|i| self.items[i].clone()).unwrap_or_default();
                         col()
                             .w_full()
+                            .pt(sp.row_padding_x as f32 / 2.0)
                             .gap(sp.sm as f32)
                             .child(text(item.title).font(t.text_style_bold(f.title)).color(color(menu.text)).single_line().truncate())
                             .child(text(item.detail).font(t.text_style(f.body)).color(t.dim()).wrap().w_full())

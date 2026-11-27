@@ -52,11 +52,11 @@ pub(crate) fn check_mark(t: &Paint, box_size: f32, ink: Hsla) -> Div {
 /// (GPUI's Linux text system reports a glyph's cell as its bounds).
 pub(crate) fn boxed_glyph(t: &Paint, s: &'static str, size: i64, ink: Hsla) -> Div {
     let ch = s.chars().next().unwrap_or(' ');
-    let Some((adv, x0, x1)) = t.tokens().font.file.as_deref().and_then(|f| super::ink::ink(f, ch)).map(|(x0, x1, adv)| (adv, x0, x1)) else {
+    let Some(g) = t.tokens().font.file.as_deref().and_then(|f| super::ink::ink(f, ch)) else {
         return label(t, s, size, false, ink);
     };
     let k = size as f32;
-    let (adv, x0, x1) = (adv * k, x0 * k, x1 * k);
+    let (adv, x0, x1) = (g.advance * k, g.x_min * k, g.x_max * k);
     let left = (-x0).max(0.0).ceil();
     let right = if x1 > adv { (x1 - adv).ceil() } else { 0.0 };
     div().flex().flex_shrink_0().w(px(adv + left + right)).pl(px(left)).child(label(t, s, size, false, ink))

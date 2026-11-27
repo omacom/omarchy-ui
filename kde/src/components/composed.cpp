@@ -357,7 +357,7 @@ QMarginsF SearchList::insets() const {
 
 int SearchList::headerHeight() const {
   const Tokens &tk = shown();
-  return qMax(tk.space(34), tk.fontSize("title") + tk.spacing("controlPaddingY") * 2);
+  return qMax(tk.space(34), tk.fontSize("heading") + tk.spacing("controlPaddingY") * 2);
 }
 
 QRectF SearchList::headerRect() const {
@@ -433,9 +433,10 @@ void SearchList::paintEvent(QPaintEvent *) {
   const SearchItem item = currentItem();
   const QFont title = tk.font("title", true);
   const qreal titleH = Paint::lineHeight(title);
-  Paint::textIn(p, QRectF(d.x(), d.y(), d.width(), titleH), Qt::AlignLeft | Qt::AlignTop, title, tk.color(QStringLiteral("surfaces.menu.text")),
-                item.title);
-  Paint::wrapped(p, QRectF(d.x(), d.y() + titleH + tk.spacing("sm"), d.width(), d.height()), tk.font("body"), tk.textDim(), item.detail);
+  const qreal topPad = tk.spacing("rowPaddingX") / 2.0;
+  Paint::textIn(p, QRectF(d.x(), d.y() + topPad, d.width(), titleH), Qt::AlignLeft | Qt::AlignTop, title,
+                tk.color(QStringLiteral("surfaces.menu.text")), item.title);
+  Paint::wrapped(p, QRectF(d.x(), d.y() + topPad + titleH + tk.spacing("sm"), d.width(), d.height()), tk.font("body"), tk.textDim(), item.detail);
   p.restore();
 }
 
