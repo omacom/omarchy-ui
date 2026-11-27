@@ -104,6 +104,19 @@ pub(crate) fn chrome_corners(t: &Theme, base: El, children: Vec<El>, rest: &Look
     base.children(children)
 }
 
+pub(crate) use navigation::optical;
+
+/// The width Qt's `Text` gives a glyph: its advance widened by ink overhanging either side, in
+/// whole pixels (as [`glyph`] boxes it).
+pub(crate) fn glyph_width(t: &Theme, s: &str, size: i64) -> f32 {
+    let style = t.text_style(size);
+    let advance = rune::text::advance(s, style);
+    let Some([x, _, w, _]) = rune::text::ink(s, style).map(|i| i.bounds) else { return advance };
+    let left = (-x).max(0.0).ceil();
+    let right = if x + w > advance { ((x + w).ceil() - advance).ceil() } else { 0.0 };
+    advance + left + right
+}
+
 /// A glyph boxed the way Qt's `Text` boxes one: the advance, widened by any ink that overhangs
 /// it, in whole pixels as Qt's hinted bearings are. Nerd Font icons in the non-Mono Nerd Fonts
 /// overhang their cell to the right, so centering the bare advance (as Rune lays text out) leaves

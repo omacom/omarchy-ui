@@ -299,7 +299,7 @@ impl MultiSelect {
         let (words, words_ink) =
             if chosen.is_empty() { (none_text, t.dim()) } else { (chosen, ink) };
         let words = text(words).font(t.text_style(tk.font.body)).color(words_ink).single_line().truncate().grow(1.0).min_w(0.0);
-        let chevron = glyph(t, "\u{f0140}", tk.font.body, color(pop.text.darker(1.2)));
+        let chevron = glyph(t, "\u{f0140}", tk.font.body, t.dim());
         let base = row()
             .key(self.key.clone())
             .w(width)
@@ -349,13 +349,14 @@ impl MultiSelect {
             .filter(|(_, (v, l))| query.is_empty() || l.to_lowercase().contains(&query) || v.to_lowercase().contains(&query))
             .collect();
 
-        // The shell sizes the popup to its rows plus 50 for the search header, at most six rows.
-        let n = shown.len() as f32;
-        let content = n * row_h + (n - 1.0).max(0.0) * gap;
-        let height = (content + t.space(50.0)).min(row_h * 6.0 + 5.0 * gap + t.space(50.0));
         let pop_border = pop.border.with_width(c.normal.border.max_width().max(1.0));
         let pad = pop_border.max_width() as f32 + sp.hairline as f32;
         let header_h = row_h + sp.control_padding_x as f32;
+        let chrome_h = header_h + 1.0 + pad * 2.0;
+        let n = shown.len() as f32;
+        let content = n * row_h + (n - 1.0).max(0.0) * gap;
+        let max_rows = row_h * 6.0 + 5.0 * gap;
+        let height = content.min(max_rows) + chrome_h;
 
         // The search field: TextField's chrome at the header's height.
         let (rest, hot) = input_looks(t);
@@ -386,7 +387,7 @@ impl MultiSelect {
             list = list.center().child(text(empty_text).font(t.text_style(tk.font.body)).color(t.faint()));
         }
         let box_size = t.space(16.0);
-        let box_radius = (t.radius() / 2.0).max(2.0);
+        let box_radius = t.radius_small();
         for (row_index, (_, (value, label))) in shown.into_iter().enumerate() {
             let selected = self.values.iter().any(|v| v == value);
             let look = if selected {
@@ -405,6 +406,7 @@ impl MultiSelect {
                 .items_center()
                 .gap(sp.row_gap as f32)
                 .px(sp.control_padding_x as f32)
+                .radius(t.radius_small())
                 .fill(if lit { color(c.hover.fill) } else { Color::TRANSPARENT })
                 .key(format!("{}-{value}", self.key))
                 .role("menuitemcheckbox")
@@ -456,10 +458,11 @@ impl ColorWell {
         let inset = c.normal.border.widths[0] as f32 + sp.xxs as f32;
         let inner = el()
             .pin(Some(inset), Some(inset), Some(inset), Some(inset))
-            .radius((r - sp.xxs as f32).max(0.0))
+            .radius((r - inset).max(0.0))
             .fill(self.swatch);
         let well = border(el().size(w, h).radius(r).fill(color(c.normal.fill)), &c.normal.border).child(inner);
-        let ring = layer(&Look::new(Rgba::TRANSPARENT, c.hover.border.clone()), r);
+        let ring_r = if r > 0.0 { t.radius().min(r + pad) } else { 0.0 };
+        let ring = layer(&Look::new(Rgba::TRANSPARENT, c.hover.border.clone()), ring_r);
         let ring = if self.cursor { ring } else { ring.group_opacity(0.0, 1.0) };
         let e = el()
             .size(w + pad * 2.0, h + pad * 2.0)
@@ -512,7 +515,7 @@ impl SwatchStrip {
         let gap = sp.xxs as f32;
         let cell = size + (gap + ring_w) * 2.0;
         let r = t.radius_small();
-        let ring_r = if r > 0.0 { r + gap } else { 0.0 };
+        let ring_r = if r > 0.0 { r + gap + ring_w } else { 0.0 };
         let mut strip = row().gap(sp.xxs as f32).role("radiogroup").focus_group();
         for (i, swatch) in self.colors.into_iter().enumerate() {
             let chosen = self.current == Some(i);

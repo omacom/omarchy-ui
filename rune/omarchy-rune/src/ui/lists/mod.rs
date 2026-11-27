@@ -14,7 +14,7 @@ use std::rc::Rc;
 use omarchy_theme::{BorderSpec, Rgba};
 use rune::{El, Live, Phase, ScrollPos, ScrollSpec, col, el, row, text};
 
-use super::{Attach, glyph};
+use super::{Attach, optical};
 use crate::{Theme, border, color};
 
 /// A status color: the tint of a status line, a Badge, a StatusDot or a KeyValue value.
@@ -229,7 +229,9 @@ impl ListRow {
             (Some(e), _) => Some(e),
             (None, false) => {
                 let g = self.glyph_color.filter(|_| !self.disabled).unwrap_or(ink);
-                Some(glyph(t, &self.glyph, f.title, color(g)))
+                let slot_w = lead_width(t);
+                let slot_h = slot_w.max((f.title as f32 * 1.35).ceil());
+                Some(optical(&self.glyph, t.text_style(f.title), color(g), None, slot_w, slot_h))
             }
             (None, true) => None,
         };
@@ -277,16 +279,16 @@ impl ListRow {
             }
             if !self.trailing_glyph.is_empty() {
                 let tint = if self.disabled { faint } else { self.trailing_tone.rgba(t, tk.roles.text_dim) };
-                let mark = glyph(t, &self.trailing_glyph, f.subtitle, color(tint));
+                let mark = optical(&self.trailing_glyph, t.text_style(f.subtitle), color(tint), None, side, side);
                 let rest = if shown { 0.0 } else { 1.0 };
                 let hovered = if has_action && !self.disabled { 0.0 } else { rest };
                 // Stacked under the action, centered in the slot.
-                slot = slot.child(row().pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).center().child(mark).group_opacity(rest, hovered));
+                slot = slot.child(mark.pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).group_opacity(rest, hovered));
             }
             if has_action {
                 let ink = if self.action_urgent { tk.palette.urgent } else { tk.roles.text_dim };
                 let rest = if shown { 1.0 } else { 0.0 };
-                let mark = glyph(t, &self.action, f.subtitle, color(ink));
+                let mark = optical(&self.action, t.text_style(f.subtitle), color(ink), None, side, side);
                 slot = slot.role("button").child(if self.disabled { mark.opacity(0.0) } else { mark.group_opacity(rest, 1.0) });
                 if let Some(attach) = self.action_press {
                     slot = attach(slot);
@@ -551,12 +553,15 @@ impl Hero {
             style.tracking = 1.2;
             labels = labels.child(text(self.status.to_uppercase()).font(style).color(ink).single_line().truncate());
         }
-        let mut e = row()
-            .w_full()
-            .items_center()
-            .child(glyph(t, &self.glyph, f.display, t.fg()).opacity(self.glyph_opacity))
-            .child(el().w(t.space(14.0)))
-            .child(labels);
+        let mut e = row().w_full().items_center();
+        if !self.glyph.is_empty() {
+            let slot_w = f.display as f32;
+            let slot_h = (f.display_large as f32).max((f.display as f32 * 1.35).ceil());
+            e = e
+                .child(optical(&self.glyph, t.text_style(f.display), t.fg(), None, slot_w, slot_h).opacity(self.glyph_opacity))
+                .child(el().w(t.space(14.0)));
+        }
+        e = e.child(labels);
         if let Some(trailing) = self.trailing {
             e = e.child(el().w(t.space(12.0))).child(trailing);
         }

@@ -252,8 +252,6 @@ impl ColorPicker {
         let h = self.height.unwrap_or(t.space(260.0));
         let small = t.radius_small();
         let knob = 14f32.max((sp.control_height as f32 * 0.38).round());
-        let ring = 1f32.max(t.space(2.0));
-        let surface = color(tk.surfaces.popups.background);
         let strip_w = t.space(14.0);
         let swatch = t.space(20.0);
         let (md, lg) = (sp.md as f32, sp.lg as f32);
@@ -269,9 +267,6 @@ impl ColorPicker {
             Some(a) => a(e, part, v),
             None => e,
         };
-        let knob_el = |x: f32, y: f32, fill: rune::Color, hot: bool| {
-            el().absolute(x, y).size(knob, knob).radius(knob / 2.0).fill(fill).border(ring, surface).scale(if hot { 1.15 } else { 1.0 })
-        };
         let pin = || el().pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0));
 
         // ---- the square: hue, white from the left, black from the bottom
@@ -280,6 +275,24 @@ impl ColorPicker {
         let clear_white = color(Rgba { r: 255, g: 255, b: 255, a: 0 });
         let black = color(Rgba { r: 0, g: 0, b: 0, a: 255 });
         let clear_black = color(Rgba { r: 0, g: 0, b: 0, a: 0 });
+        let kx = (v.s * square_w - knob / 2.0).round().clamp(0.0, (square_w - knob).max(0.0));
+        let ky = ((1.0 - v.v) * square_h - knob / 2.0).round().clamp(0.0, (square_h - knob).max(0.0));
+        let sv_knob = el()
+            .absolute(kx, ky)
+            .size(knob, knob)
+            .radius(knob / 2.0)
+            .fill(t.bg())
+            .scale(if self.cursor { 1.15 } else { 1.0 })
+            .child(
+                el().pin(Some(1.0), Some(1.0), Some(1.0), Some(1.0))
+                    .radius(((knob - 2.0) / 2.0).max(0.0))
+                    .fill(t.fg())
+                    .child(
+                        el().pin(Some(1.0), Some(1.0), Some(1.0), Some(1.0))
+                            .radius(((knob - 4.0) / 2.0).max(0.0))
+                            .fill(opaque),
+                    ),
+            );
         let square = el()
             .w(square_w)
             .h(square_h)
@@ -289,11 +302,26 @@ impl ColorPicker {
             .child(pin().radius(small).fill(color(Rgba { r: hr, g: hg, b: hb, a: 255 })))
             .child(pin().radius(small).linear_gradient(PI / 2.0, [(0.0, white), (1.0, clear_white)]))
             .child(pin().radius(small).gradient(clear_black, black))
-            .child(knob_el((v.s * square_w - knob / 2.0).round(), ((1.0 - v.v) * square_h - knob / 2.0).round(), opaque, self.cursor));
+            .child(sv_knob);
         let square = wire(square, Part::Square);
 
-        // ---- strips with Slider knobs
-        let strip_knob = |fr: f32| knob_el(((strip_w - knob) / 2.0).round(), (fr * (square_h - knob)).round(), t.fg(), false);
+        // ---- strips with inset two-tone knobs
+        let strip_pad = t.space(2.0);
+        let strip_knob_size = 8f32.max(strip_w - strip_pad * 2.0);
+        let strip_inset = strip_pad + strip_knob_size / 2.0;
+        let strip_knob = |fr: f32| {
+            let x = ((strip_w - strip_knob_size) / 2.0).round();
+            let y = strip_pad + (fr * (square_h - strip_knob_size - strip_pad * 2.0).max(0.0)).round();
+            el().absolute(x, y)
+                .size(strip_knob_size, strip_knob_size)
+                .radius(strip_knob_size / 2.0)
+                .fill(t.bg())
+                .child(
+                    el().pin(Some(1.0), Some(1.0), Some(1.0), Some(1.0))
+                        .radius(((strip_knob_size - 2.0) / 2.0).max(0.0))
+                        .fill(t.fg()),
+                )
+        };
         let hue_stops: Vec<(f32, rune::Color)> = [[255, 0, 0], [255, 255, 0], [0, 255, 0], [0, 255, 255], [0, 0, 255], [255, 0, 255], [255, 0, 0]]
             .iter()
             .enumerate()
@@ -307,7 +335,7 @@ impl ColorPicker {
             .key("color-hue")
             .child(pin().radius(small).linear_gradient(PI, hue_stops))
             .child(strip_knob(v.h));
-        let hue = wire(hue, Part::Hue { inset: knob / 2.0 });
+        let hue = wire(hue, Part::Hue { inset: strip_inset });
         let mut top = row().gap(md).child(square).child(hue);
         if self.alpha {
             let alpha = el()
@@ -319,11 +347,12 @@ impl ColorPicker {
                 .child(pin().radius(small).fill(t.track()))
                 .child(pin().radius(small).gradient(opaque, color(Rgba { r, g, b, a: 0 })))
                 .child(strip_knob(1.0 - v.a));
-            top = top.child(wire(alpha, Part::Alpha { inset: knob / 2.0 }));
+            top = top.child(wire(alpha, Part::Alpha { inset: strip_inset }));
         }
 
         // ---- preview and hex field
-        let preview = el().w(field_h).h(field_h).radius(small).border(1.0, color(c.normal.border.color)).child(inset_fill(color(v.rgba()), 1.0, small));
+        let full_r = t.radius();
+        let preview = el().w(field_h).h(field_h).radius(full_r).border(1.0, color(c.normal.border.color)).child(inset_fill(color(v.rgba()), 1.0, full_r));
         let style = t.text_style(tk.font.body);
         let mut input = TextInput::new(&self.hex).plain().width(None).text_style(style);
         if let Some(field) = &self.field {

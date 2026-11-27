@@ -423,6 +423,9 @@ impl Banner {
         let tone = if self.tone == Tone::Neutral { Tone::Info } else { self.tone };
         let ink = tone.color(t);
         let line = tk.controls.normal.border.max_width().max(1.0) as f32;
+        let btn_bw = tk.controls.normal.border.max_width().max(tk.controls.hover.border.max_width()) as f32;
+        let btn_min_h = tk.font.line_px(tk.font.body) as f32 + (sp.control_padding_y as f32 + btn_bw) * 2.0;
+        let inner_min_h = (sp.control_height as f32).max(btn_min_h);
         let trailing = !self.action.is_empty() || self.dismissible;
         let mark = self.glyph.unwrap_or_else(|| tone.glyph().into());
 
@@ -430,7 +433,7 @@ impl Banner {
             .w_full()
             .items_center()
             .gap(sp.control_gap as f32)
-            .min_h(sp.control_height as f32 + (sp.sm as f32 + line) * 2.0)
+            .min_h(inner_min_h + (sp.sm as f32 + line) * 2.0)
             .pl(sp.control_padding_x as f32 + line)
             .pr(if trailing { sp.sm } else { sp.control_padding_x } as f32 + line)
             .py(sp.sm as f32 + line)
@@ -521,7 +524,7 @@ impl Toast {
             text(self.title.clone()).font(t.text_style_bold(tk.font.body)).color(ink).single_line(),
         );
         if !self.text.is_empty() {
-            words = words.child(text(self.text).font(body).color(color(s.base.text.darker(1.15))).wrap());
+            words = words.child(text(self.text).font(body).color(color(s.base.text.with_alpha(0.78))).wrap());
         }
         let mut content = row().w_full().items_center().gap(t.space(12.0));
         if !self.glyph.is_empty() {
@@ -532,10 +535,13 @@ impl Toast {
             content = content.child(attached(Button::new(self.action).bordered(true).build(t), self.on_action));
         }
 
+        let line = t.space(2.0).max(1.0);
+        let shift = if self.countdown.is_some() { (line / 2.0).round() } else { 0.0 };
         let mut e = col()
-            .pt(t.space(10.0) + bw[0])
+            .justify_center()
+            .pt(t.space(10.0) + bw[0] - shift)
             .pr(t.space(12.0) + bw[1])
-            .pb(t.space(10.0) + bw[2])
+            .pb(t.space(10.0) + bw[2] + shift)
             .pl(t.space(12.0) + bw[3])
             .fill(color(s.base.background))
             .radius(t.radius())
@@ -545,12 +551,12 @@ impl Toast {
         e = e.w(self.width.unwrap_or_else(|| t.space(360.0)));
         if self.cursor {
             let hover = color(tk.controls.hover.fill);
-            e = e.child(el().pin(Some(bw[3]), Some(bw[0]), Some(bw[1]), Some(bw[2])).fill(hover));
+            let inner_r = (t.radius() - bw[3].max(bw[0])).max(0.0);
+            e = e.child(el().pin(Some(bw[3]), Some(bw[0]), Some(bw[1]), Some(bw[2])).radius(inner_r).fill(hover));
         }
         e = e.child(content);
         if let Some(left) = self.countdown {
             let r = t.radius();
-            let line = t.space(2.0).max(1.0);
             e = e.child(
                 row()
                     .pin(Some(bw[3] + r), None, Some(bw[1] + r), Some(bw[2]))

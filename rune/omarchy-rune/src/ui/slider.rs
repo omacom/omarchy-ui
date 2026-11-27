@@ -58,8 +58,12 @@ impl Slider {
         let knob = 14f32.max((sp.control_height as f32 * 0.38).round());
         let height = t.space(22.0).max(knob + sp.md as f32);
         let progress = if self.max > self.min { ((self.value - self.min) / (self.max - self.min)).clamp(0.0, 1.0) } else { 0.0 };
+        let track_x = knob / 2.0;
         let track_w = width - knob;
         let mid = height / 2.0;
+        let ring = 1f32.max(t.space(2.0));
+        let inner_knob = 4f32.max(knob - ring * 2.0);
+        let knob_cx = track_x + track_w * progress;
 
         let track_color = tk.palette.foreground.with_alpha(tk.controls.selected.fill.a as f64 / 255.0);
         let mut e = el()
@@ -68,34 +72,50 @@ impl Slider {
             .role("slider")
             .range_value(self.value as f64, self.min as f64, self.max as f64)
             .focusable(true)
-            .hit()
-            .child(el().absolute(knob / 2.0, mid - track_h / 2.0).size(track_w, track_h).radius(track_h / 2.0).fill(color(track_color)))
-            .child(
+            .hit();
+        // Split the track around the knob with a transparent gap of `ring`, so the slider sits
+        // cleanly on any surface without painting an opaque background halo.
+        let fill_end = (knob_cx - knob / 2.0).clamp(track_x, track_x + track_w);
+        let fill_w = (fill_end - track_x).max(0.0);
+        if fill_w > 0.0 {
+            e = e.child(
                 el()
                     .key("fill")
-                    .absolute(knob / 2.0, mid - track_h / 2.0)
-                    .size(track_w * progress, track_h)
+                    .absolute(track_x, mid - track_h / 2.0)
+                    .size(fill_w, track_h)
                     .radius(track_h / 2.0)
                     .fill(t.fg()),
             );
+        }
+        let unfilled_start = (knob_cx + knob / 2.0).clamp(track_x, track_x + track_w);
+        let unfilled_w = (track_x + track_w - unfilled_start).max(0.0);
+        if unfilled_w > 0.0 {
+            e = e.child(
+                el()
+                    .absolute(unfilled_start, mid - track_h / 2.0)
+                    .size(unfilled_w, track_h)
+                    .radius(track_h / 2.0)
+                    .fill(color(track_color)),
+            );
+        }
         if self.ticks > 2 {
             let tw = 1f32.max(t.space(2.0));
             let th = track_h + t.space(4.0);
             for i in 1..self.ticks - 1 {
-                let x = knob / 2.0 + track_w * (i as f32 / (self.ticks - 1) as f32) - tw / 2.0;
-                e = e.child(el().absolute(x, mid - th / 2.0).size(tw, th).radius(1.0).fill(color(surface)));
+                let cx = track_x + track_w * (i as f32 / (self.ticks - 1) as f32);
+                if (cx - knob_cx).abs() > knob / 2.0 {
+                    e = e.child(el().absolute(cx - tw / 2.0, mid - th / 2.0).size(tw, th).radius(1.0).fill(color(surface)));
+                }
             }
         }
-        let ring = 1f32.max(t.space(2.0));
         let scale = if self.cursor { 1.15 } else { 1.0 };
         e = e.child(
             el()
                 .key("knob")
-                .absolute(knob / 2.0 + track_w * progress - knob / 2.0, mid - knob / 2.0)
-                .size(knob, knob)
-                .radius(knob / 2.0)
+                .absolute(knob_cx - inner_knob / 2.0, mid - inner_knob / 2.0)
+                .size(inner_knob, inner_knob)
+                .radius(inner_knob / 2.0)
                 .fill(t.fg())
-                .border(ring, color(surface))
                 .scale(scale),
         );
         match self.change {

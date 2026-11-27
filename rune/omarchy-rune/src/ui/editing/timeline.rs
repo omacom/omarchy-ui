@@ -220,7 +220,7 @@ impl Timeline {
         let step = tick_step(pps, t.space(90.0));
         let end = self.start + view.visible();
 
-        let mut e = el().w(w).h(h).clip_rounded(0.0).focusable(true).role("slider").key("timeline");
+        let mut e = el().w(w).h(h).focusable(true).role("slider").key("timeline");
 
         // ---- ruler: minor and major ticks, then labels
         let minor = step / 5.0;
@@ -246,14 +246,15 @@ impl Timeline {
             e = e.child(text(label).font(style).color(t.dim()).single_line().absolute(x, sp.xxs as f32));
         }
 
-        // ---- lanes and clips
+        // ---- lanes and clips (clipped below the ruler so the playhead head stays unclipped)
         let c = &tk.controls;
         let label_size = tk.font.body_small;
         let label_h = tk.font.line_px(label_size) as f32;
         let pad = sp.control_padding_x as f32;
+        let mut lanes = el().absolute(0.0, ruler_h).size(w, (h - ruler_h).max(0.0)).clip_rounded(0.0);
         for (ti, clips) in self.tracks.iter().enumerate() {
-            let ly = ruler_h + ti as f32 * (lane_h + lane_gap);
-            e = e.child(el().absolute(0.0, ly).size(w, lane_h).radius(small).fill(color(c.normal.fill)));
+            let ly = ti as f32 * (lane_h + lane_gap);
+            lanes = lanes.child(el().absolute(0.0, ly).size(w, lane_h).radius(small).fill(color(c.normal.fill)));
             for (ci, clip) in clips.iter().enumerate() {
                 let selected = self.selected == Some((ti, ci));
                 let x = view.x_at(clip.start);
@@ -269,7 +270,7 @@ impl Timeline {
                     (Look::new(c.normal.fill, c.normal.border.clone()), Look::new(c.hover.fill, c.hover.border.clone()))
                 };
                 let label_style = if selected { t.text_style_bold(label_size) } else { t.text_style(label_size) };
-                let label_inset = if selected { t.space(8.0) + sp.md as f32 } else { pad };
+                let label_inset = if selected { t.space(8.0) + pad } else { pad };
                 let label = text(clip.label.clone())
                     .font(label_style)
                     .color(t.fg())
@@ -295,9 +296,10 @@ impl Timeline {
                         children.push(handle.build(t).absolute(hx, 0.0));
                     }
                 }
-                e = e.child(chrome(t, base, children, &rest, &hot, selected, small));
+                lanes = lanes.child(chrome(t, base, children, &rest, &hot, selected, small));
             }
         }
+        e = e.child(lanes);
 
         // ---- playhead
         if self.position >= self.start && self.position <= end {
@@ -308,9 +310,10 @@ impl Timeline {
             let ink = if self.cursor { color(hot_accent(t, accent)) } else { color(accent) };
             let x = view.x_at(self.position) - (head_w / 2.0).round();
             let y = ruler_h - head_h;
+            let playhead_bottom = if n > 0 { ruler_h + (n - 1) as f32 * (lane_h + lane_gap) + lane_h } else { h };
             e = e
                 .child(el().absolute(x, y).size(head_w, head_h).radius(small).fill(ink))
-                .child(el().absolute(x + ((head_w - line_w) / 2.0).round(), ruler_h).size(line_w, h - ruler_h).fill(ink));
+                .child(el().absolute(x + ((head_w - line_w) / 2.0).round(), ruler_h).size(line_w, (playhead_bottom - ruler_h).max(0.0)).fill(ink));
         }
 
         if let Some(seek) = &self.seek {
@@ -424,13 +427,17 @@ impl Scrubber {
         let ty = ((h - line) / 2.0).floor();
 
         let ring = 1f32.max(t.space(2.0));
-        let played = (track_w * progress).round();
+        let inner_knob = 4f32.max(knob - ring * 2.0);
+        let track_x = knob / 2.0;
+        let knob_cx = track_x + (track_w * progress).round();
+        let fill_w = (knob_cx - knob / 2.0 - track_x).clamp(0.0, track_w);
+        let unfilled_start = (knob_cx + knob / 2.0).clamp(track_x, track_x + track_w);
+        let unfilled_w = (track_x + track_w - unfilled_start).max(0.0);
         let knob_at = |scale: f32| {
-            el().absolute(played, mid - knob / 2.0)
-                .size(knob, knob)
-                .radius(knob / 2.0)
+            el().absolute(knob_cx - inner_knob / 2.0, mid - inner_knob / 2.0)
+                .size(inner_knob, inner_knob)
+                .radius(inner_knob / 2.0)
                 .fill(t.fg())
-                .border(ring, color(tk.surfaces.popups.background))
                 .scale(scale)
         };
         let mut bar = el()
@@ -441,9 +448,14 @@ impl Scrubber {
             .role("slider")
             .range_value(self.position as f64, 0.0, self.duration as f64)
             .cursor(Cursor::Pointer)
-            .key("scrubber")
-            .child(el().absolute(knob / 2.0, mid - track_h / 2.0).size(track_w, track_h).radius(track_h / 2.0).fill(t.track()))
-            .child(el().absolute(knob / 2.0, mid - track_h / 2.0).size(played, track_h).radius(track_h / 2.0).fill(t.fg()))
+            .key("scrubber");
+        if fill_w > 0.0 {
+            bar = bar.child(el().absolute(track_x, mid - track_h / 2.0).size(fill_w, track_h).radius(track_h / 2.0).fill(t.fg()));
+        }
+        if unfilled_w > 0.0 {
+            bar = bar.child(el().absolute(unfilled_start, mid - track_h / 2.0).size(unfilled_w, track_h).radius(track_h / 2.0).fill(t.track()));
+        }
+        bar = bar
             .child(if self.cursor { knob_at(1.15) } else { knob_at(1.0).group_opacity(1.0, 0.0) })
             .child(if self.cursor { el() } else { knob_at(1.15).group_opacity(0.0, 1.0) });
         if let Some(seek) = &self.seek {

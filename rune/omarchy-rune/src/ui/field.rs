@@ -134,7 +134,7 @@ impl NumberField {
             let b = el()
                 .size(side, side)
                 .center()
-                .radius(t.radius_small())
+                .radius((t.radius() - inset).max(0.0))
                 .hover(color(c.hover.fill))
                 .press(color(c.pressed.fill))
                 .role("button")
@@ -148,12 +148,20 @@ impl NumberField {
         };
         let down = step_button("\u{2212}", (self.value - self.step).max(self.from), self.value > self.from);
         let up = step_button("+", (self.value + self.step).min(self.to), self.value < self.to);
-        let value = text(self.value.to_string()).font(t.text_style(tk.font.body)).color(t.fg());
-        let base = row().w(sp.number_field_width as f32).h(h).items_center().justify_between().px(inset).role("spinbutton");
+        let value = text(self.value.to_string())
+            .font(t.text_style(tk.font.body))
+            .color(t.fg())
+            .single_line()
+            .truncate()
+            .align(Align::Center)
+            .grow(1.0)
+            .min_w(0.0)
+            .px(sp.sm as f32);
+        let base = row().w(sp.number_field_width as f32).h(h).items_center().px(inset).role("spinbutton");
         let field = chrome(t, base, vec![down, value, up], &rest, &hot, self.cursor, t.radius());
-        let mut out = col().gap(sp.md as f32);
+        let mut out = col().gap(sp.label_gap as f32);
         if !self.label.is_empty() {
-            out = out.child(field_label(t, &self.label, tk.font.body_small, false));
+            out = out.child(field_label(t, &self.label, tk.font.caption, true));
         }
         out.child(field)
     }
@@ -249,7 +257,7 @@ impl Dropdown {
             list = border(list, &pop.border.with_width(tk.controls.normal.border.max_width().max(1.0)));
             for (value, label) in self.options {
                 let checked = value == self.value;
-                let row_el = super::MenuRow::new(label).checked(checked).build(t);
+                let row_el = super::MenuRow::new(label).checked(checked).row_radius(t.radius_small()).build(t);
                 list = list.child(match &self.choose {
                     Some(attach) => attach(row_el, value),
                     None => row_el,

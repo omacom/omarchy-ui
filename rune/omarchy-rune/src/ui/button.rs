@@ -4,7 +4,7 @@
 use omarchy_theme::{BorderSpec, Rgba};
 use rune::{El, el, row, text};
 
-use super::{Attach, Look, chrome, glyph, reserve};
+use super::{Attach, Look, chrome, glyph, glyph_width, reserve};
 use crate::{Theme, color};
 
 /// The button. Borderless at rest unless `bordered`; the hover-cursor border under the pointer,
@@ -73,7 +73,9 @@ impl Button {
         let ink = if self.selected { color(c.selected.text) } else { t.fg() };
         let style = if self.selected { t.text_style_bold(tk.font.body) } else { t.text_style(tk.font.body) };
         let mut kids = Vec::new();
+        let mut content_w = 0.0f32;
         if let Some(icon) = &self.icon {
+            content_w += glyph_width(t, icon, tk.font.icon);
             let mark = glyph(t, icon, tk.font.icon, ink);
             if self.label.is_empty() {
                 kids.push(mark);
@@ -83,13 +85,26 @@ impl Button {
             }
         }
         if !self.label.is_empty() {
+            if self.icon.is_some() {
+                content_w += sp.control_gap as f32;
+            }
+            content_w += rune::text::advance(&self.label, style);
             kids.push(text(self.label.clone()).font(style).color(ink).single_line());
         }
+        let content_h = if !self.label.is_empty() {
+            tk.font.line_px(tk.font.body) as f32
+        } else if self.icon.is_some() {
+            tk.font.line_px(tk.font.icon) as f32
+        } else {
+            0.0
+        };
 
         let base = row()
             .items_center()
             .justify_center()
             .gap(sp.control_gap as f32)
+            .min_w(content_w.ceil() + sp.control_padding_x as f32 * 2.0 + rl + rr)
+            .min_h(content_h.ceil() + sp.control_padding_y as f32 * 2.0 + rt + rb)
             .pt(sp.control_padding_y as f32 + rt)
             .pb(sp.control_padding_y as f32 + rb)
             .pl(sp.control_padding_x as f32 + rl)
@@ -163,9 +178,9 @@ impl IconButton {
             .press_scale(0.97);
         let style = t.text_style(icon);
         let mark = match rune::text::ink(&self.glyph, style).map(|i| i.bounds) {
-            Some([ix, iy, iw, ih]) if iw > 0.0 && ih > 0.0 => {
+            Some([ix, _, iw, ih]) if iw > 0.0 && ih > 0.0 => {
                 let x = (size / 2.0 - (ix + iw / 2.0)).round();
-                let y = (size / 2.0 - (iy + ih / 2.0)).round();
+                let y = ((size - style.line_height) / 2.0).round();
                 el().size(size, size).child(text(self.glyph).font(style).color(t.fg()).single_line().absolute(x, y))
             }
             _ => glyph(t, &self.glyph, icon, t.fg()),
