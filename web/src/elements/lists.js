@@ -4,7 +4,7 @@
 // Badge.qml, StatusDot.qml, Avatar.qml, TileGrid.qml.
 
 import { OmarchyElement, esc } from "./base.js";
-import { alpha, centerGlyph, fitGlyph, space, trackPointer } from "./looks.js";
+import { OG_CSS, alpha, inkCenter, ogFont, space, trackPointer } from "./looks.js";
 import { omarchyApi } from "../runtime.js";
 
 const TONES = ["accent", "success", "warning", "urgent", "muted"];
@@ -306,7 +306,7 @@ export class ListRow extends OmarchyElement {
     current: ["bool"],
     disabled: ["bool"],
   };
-  static css = `${SURFACE_CSS}
+  static css = `${SURFACE_CSS}${OG_CSS}
 :host { display: block; cursor: pointer; user-select: none; -webkit-user-select: none; }
 :host([disabled]) { cursor: default; pointer-events: none; }
 .surface { display: flex; flex-direction: column; padding: calc(var(--omarchy-space-row-padding-x) / 2) var(--omarchy-space-control-padding-x); }
@@ -314,8 +314,13 @@ export class ListRow extends OmarchyElement {
 .lead { flex: none; width: calc(var(--omarchy-font-icon-large) + ${space(10)}); display: flex; align-items: center; }
 .lead.none { display: none; }
 .lead-box { width: var(--omarchy-font-icon-large); display: flex; justify-content: center; align-items: center; }
-.glyph { font-size: var(--omarchy-font-title); line-height: var(--omarchy-line-title, normal); white-space: pre; color: var(--glyph-color, var(--omarchy-foreground)); }
-.glyph:empty { display: none; }
+.lead-og {
+  width: var(--omarchy-font-icon-large);
+  height: max(var(--omarchy-font-icon-large), round(up, calc(var(--omarchy-font-title) * 1.35), 1px));
+  color: var(--glyph-color, var(--omarchy-foreground));
+  ${ogFont("title")}
+}
+.lead-og.none { display: none; }
 .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: ${space(1)}; }
 .title { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); font-weight: bold; color: var(--omarchy-foreground); }
 .sub, .status { font-size: var(--omarchy-font-caption); line-height: var(--omarchy-line-caption, normal); color: var(--omarchy-text-dim); }
@@ -326,12 +331,16 @@ export class ListRow extends OmarchyElement {
 .value { font-size: var(--omarchy-font-body-small); line-height: var(--omarchy-line-body-small, normal); color: var(--omarchy-text-dim); white-space: pre; }
 .value:empty { display: none; }
 ::slotted([slot="trailing"]) { flex: none; }
-.slot { position: relative; flex: none; width: ${space(22)}; height: ${space(22)}; display: flex; align-items: center; justify-content: center; border-radius: var(--omarchy-radius-small); }
+.slot { position: relative; flex: none; width: ${space(22)}; height: ${space(22)}; border-radius: var(--omarchy-radius-small); ${ogFont("subtitle")} }
 .slot.none { display: none; }
 .slot.has-action { cursor: pointer; }
 .slot.cur { background: ${alpha("var(--ink)", "var(--omarchy-control-hover-fill-alpha)")}; }
 .slot.cur::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: var(--omarchy-control-hover-border-top) solid ${alpha("var(--ink)", "var(--omarchy-control-hover-border-alpha)")}; }
-.end-glyph { font-size: var(--omarchy-font-subtitle); line-height: var(--omarchy-line-subtitle, normal); white-space: pre; }
+.end-glyph {
+  position: absolute; left: 50%; white-space: pre;
+  font-size: var(--f); line-height: var(--l, normal);
+  top: round(calc((100% - var(--l, 1em)) / 2), 1px);
+}
 .end-glyph.hidden { display: none; }
 .act { color: var(--omarchy-text-dim); }
 .act.urgent { color: var(--omarchy-urgent); }
@@ -343,7 +352,7 @@ export class ListRow extends OmarchyElement {
   setup() {
     this.shadowRoot.innerHTML = `<div class="surface" part="surface">
   <div class="main">
-    <div class="lead"><div class="lead-box"><span class="glyph"></span><slot name="leading"></slot></div></div>
+    <div class="lead"><div class="lead-box"><div class="og lead-og"><span class="glyph"></span></div><slot name="leading"></slot></div></div>
     <div class="info"><div class="title"></div><div class="sub"></div><div class="status"></div></div>
     <div class="trail"><span class="value"></span><slot name="trailing"></slot>
       <div class="slot"><span class="end-glyph act"></span><span class="end-glyph tg"></span></div></div>
@@ -377,11 +386,14 @@ export class ListRow extends OmarchyElement {
     surface.classList.toggle("cursor", this.cursor && !this.disabled);
     surface.classList.toggle("current", this.current && !this.disabled);
 
+    const leadOg = this.$(".lead-og");
     const glyph = this.$(".glyph");
-    glyph.textContent = leading ? "" : this.glyph;
+    const showLeadGlyph = !leading && !!this.glyph;
+    glyph.textContent = showLeadGlyph ? this.glyph : "";
+    leadOg.classList.toggle("none", !showLeadGlyph);
     if (this.glyphColor) this.style.setProperty("--glyph-color", this.glyphColor);
     else this.style.removeProperty("--glyph-color");
-    fitGlyph(glyph);
+    if (showLeadGlyph) inkCenter(glyph);
     this.$(".lead").classList.toggle("none", !leading && !this.glyph);
 
     this.$(".title").textContent = this.title;
@@ -408,8 +420,8 @@ export class ListRow extends OmarchyElement {
     tg.textContent = this.trailingGlyph;
     tg.style.color = this.disabled ? "" : tone(this.trailingTone, "var(--omarchy-text-dim)");
     tg.classList.toggle("hidden", !this.trailingGlyph || actionShown);
-    fitGlyph(act);
-    fitGlyph(tg);
+    if (actionShown) inkCenter(act);
+    if (this.trailingGlyph && !actionShown) inkCenter(tg);
     slot.title = this.actionTip && actionShown ? this.actionTip : "";
 
     this.$(".trail").classList.toggle("none", !(value.textContent || trailing || slotShown));
@@ -555,10 +567,17 @@ export class KeyValue extends OmarchyElement {
 
 export class Hero extends OmarchyElement {
   static props = { glyph: ["string", ""], title: ["string", ""], status: ["string", ""], error: ["bool"], glyphOpacity: ["number", 1] };
-  static css = `
+  static css = `${OG_CSS}
 :host { display: flex; align-items: center; min-width: 0; }
-.glyph { flex: none; font-size: var(--omarchy-font-display); line-height: var(--omarchy-line-display, normal); white-space: pre; color: var(--omarchy-foreground); }
-.labels { flex: 1; min-width: 0; margin-left: ${space(14)}; display: flex; flex-direction: column; gap: ${space(2)}; }
+.glyph-slot {
+  width: var(--omarchy-font-display);
+  height: max(var(--omarchy-font-display-large), round(up, calc(var(--omarchy-font-display) * 1.35), 1px));
+  margin-right: ${space(14)};
+  color: var(--omarchy-foreground);
+  ${ogFont("display")}
+}
+.glyph-slot.none { display: none; }
+.labels { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: ${space(2)}; }
 .title { font-size: var(--omarchy-font-title); line-height: var(--omarchy-line-title, normal); font-weight: bold; }
 .status { font-size: var(--omarchy-font-caption); line-height: var(--omarchy-line-caption, normal); font-weight: bold; letter-spacing: 1.2px;
   text-transform: uppercase; color: var(--omarchy-text-dim); }
@@ -569,14 +588,16 @@ export class Hero extends OmarchyElement {
 .trailing.none { display: none; }
 `;
   setup() {
-    this.shadowRoot.innerHTML = `<span class="glyph"></span><div class="labels"><div class="title"></div><div class="status"></div></div><div class="trailing"><slot name="trailing"></slot><slot></slot></div>`;
+    this.shadowRoot.innerHTML = `<div class="og glyph-slot"><span class="glyph"></span></div><div class="labels"><div class="title"></div><div class="status"></div></div><div class="trailing"><slot name="trailing"></slot><slot></slot></div>`;
     for (const s of this.shadowRoot.querySelectorAll("slot")) s.addEventListener("slotchange", () => this.update());
   }
   update() {
+    const slot = this.$(".glyph-slot");
     const g = this.$(".glyph");
     g.textContent = this.glyph;
-    g.style.opacity = String(this.glyphOpacity);
-    fitGlyph(g);
+    slot.classList.toggle("none", !this.glyph);
+    slot.style.opacity = String(this.glyphOpacity);
+    if (this.glyph) inkCenter(g);
     this.$(".title").textContent = this.title;
     this.$(".status").textContent = this.status;
     const any = [...this.shadowRoot.querySelectorAll("slot")].some((s) => s.assignedElements().length);
@@ -670,8 +691,9 @@ export class Avatar extends OmarchyElement {
 .pic { object-fit: cover; border-radius: var(--corner); }
 .icon { object-fit: contain; }
 .tile { border-radius: var(--corner); background: var(--omarchy-control-selected-fill); align-items: center; justify-content: center; }
-.mark { font-size: round(calc(var(--px) * 0.5), 1px); line-height: 1; white-space: pre; color: var(--omarchy-foreground); }
+.mark { font-size: round(calc(var(--px) * 0.5), 1px); line-height: normal; white-space: pre; color: var(--omarchy-foreground); }
 .mark.bold { font-weight: bold; }
+.mark.og-glyph { position: absolute; left: 50%; top: 50%; transform: translateY(-50%); }
 .show { display: block; }
 .tile.show { display: flex; }
 omarchy-status-dot { position: absolute; display: none; --size: max(${space(6)}, round(calc(var(--px) * 0.28), 1px));
@@ -764,13 +786,9 @@ omarchy-status-dot.show { display: inline-block; }
     const mark = this.$(".mark");
     mark.textContent = this.glyph || this.initial;
     mark.classList.toggle("bold", !this.glyph);
-    if (this.glyph) centerGlyph(mark);
-    else {
-      mark.style.width = "";
-      mark.style.position = "";
-      mark.style.left = "";
-      mark.style.top = "";
-    }
+    mark.classList.toggle("og-glyph", !!this.glyph);
+    if (this.glyph) inkCenter(mark);
+    else mark.style.marginLeft = "";
 
     const dot = this.$("omarchy-status-dot");
     dot.classList.toggle("show", !!this.status);
@@ -799,15 +817,19 @@ omarchy-status-dot.show { display: inline-block; }
 
 export class TileGrid extends OmarchyElement {
   static props = { tiles: ["json", () => []], columns: ["number", 4], cellWidth: ["number", 0], cursorIndex: ["number", -1], currentIndex: ["number", -1] };
-  static css = `${SURFACE_CSS}
-:host { --cell: ${space(88)}; display: inline-grid; grid-auto-rows: auto; vertical-align: top; }
-.tile { width: var(--cell); box-sizing: border-box; padding: var(--omarchy-space-md) 0; cursor: pointer; user-select: none; -webkit-user-select: none;
-  display: flex; flex-direction: column; align-items: center; gap: var(--omarchy-space-md); }
-.icon { width: 100%; height: max(var(--omarchy-line-display, 32px), var(--omarchy-font-display-large)); display: flex; align-items: center; justify-content: center; }
-.g { font-size: var(--omarchy-font-display); line-height: var(--omarchy-line-display, normal); white-space: pre; color: var(--omarchy-foreground); }
-.label { box-sizing: border-box; width: 100%; padding: 0 var(--omarchy-space-md); text-align: center; color: var(--omarchy-foreground);
+  static css = `${SURFACE_CSS}${OG_CSS}
+:host { --cell: ${space(88)}; --icon-h: max(var(--omarchy-line-display, 32px), var(--omarchy-font-display-large)); display: inline-grid; grid-auto-rows: auto; vertical-align: top; }
+.tile {
+  width: var(--cell);
+  height: calc(2 * var(--omarchy-space-md) + var(--icon-h) + var(--omarchy-space-md) + 2 * var(--omarchy-line-body-small, 15px));
+  box-sizing: border-box; padding: 0 var(--omarchy-space-md); cursor: pointer; user-select: none; -webkit-user-select: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--omarchy-space-md);
+}
+.icon { width: 100%; height: var(--icon-h); flex: none; color: var(--omarchy-foreground); ${ogFont("display")} }
+.icon.av { display: flex; align-items: center; justify-content: center; }
+.label { box-sizing: border-box; width: 100%; text-align: center; color: var(--omarchy-foreground);
   font-size: var(--omarchy-font-body-small); line-height: var(--omarchy-line-body-small, 15px);
-  height: calc(2 * var(--omarchy-line-body-small, 15px)); overflow: hidden; white-space: normal; overflow-wrap: break-word;
+  max-height: calc(2 * var(--omarchy-line-body-small, 15px)); overflow: hidden; white-space: normal; overflow-wrap: break-word;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 `;
   setup() {
@@ -832,9 +854,9 @@ export class TileGrid extends OmarchyElement {
         .map((t, i) => {
           const avatared = t.source !== undefined || t.name !== undefined;
           const icon = avatared
-            ? `<omarchy-avatar name="${esc(t.name || t.label || "")}" source="${esc(t.source || "")}" glyph="${esc(t.glyph || "")}"></omarchy-avatar>`
-            : `<span class="g">${esc(t.glyph || "")}</span>`;
-          return `<div class="tile surface" role="gridcell" data-index="${i}"><div class="icon">${icon}</div><div class="label">${esc(t.label || "")}</div></div>`;
+            ? `<div class="icon av"><omarchy-avatar name="${esc(t.name || t.label || "")}" source="${esc(t.source || "")}" glyph="${esc(t.glyph || "")}"></omarchy-avatar></div>`
+            : `<div class="icon og"><span class="g">${esc(t.glyph || "")}</span></div>`;
+          return `<div class="tile surface" role="gridcell" data-index="${i}">${icon}<div class="label">${esc(t.label || "")}</div></div>`;
         })
         .join("");
     }
@@ -843,7 +865,7 @@ export class TileGrid extends OmarchyElement {
       el.classList.toggle("current", i === this.currentIndex);
       el.setAttribute("aria-selected", String(i === this.currentIndex));
     });
-    this.shadowRoot.querySelectorAll(".g").forEach((g) => fitGlyph(g));
+    this.shadowRoot.querySelectorAll(".g").forEach((g) => inkCenter(g));
   }
 }
 

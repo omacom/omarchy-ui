@@ -5,7 +5,7 @@
 // actionClicked); Banner emits `dismiss` from its dismiss button (Qt's dismissed).
 
 import { OmarchyElement, surfaceBorder } from "./base.js";
-import { alpha, darker, fitGlyph, space } from "./looks.js";
+import { alpha, fitGlyph, space } from "./looks.js";
 import { omarchyApi } from "../runtime.js";
 
 /** A tone's color (spec: neutral foreground, info accent, success, warning, error urgent). */
@@ -233,9 +233,10 @@ export class Banner extends OmarchyElement {
   static css = `
 :host {
   --tone: var(--omarchy-accent);
-  display: flex; align-items: center; gap: var(--omarchy-space-control-gap); box-sizing: border-box;
-  min-height: calc(var(--omarchy-space-control-height) + 2 * var(--omarchy-space-sm) + 2 * var(--bw));
   --bw: max(1px, var(--omarchy-control-normal-border-top));
+  --btn-h: calc(var(--omarchy-line-body, 16px) + 2 * var(--omarchy-space-control-padding-y) + 2 * max(var(--omarchy-control-normal-border-top), var(--omarchy-control-hover-border-top)));
+  display: flex; align-items: center; gap: var(--omarchy-space-control-gap); box-sizing: border-box;
+  min-height: calc(max(var(--omarchy-space-control-height), var(--btn-h)) + 2 * var(--omarchy-space-sm) + 2 * var(--bw));
   padding: var(--omarchy-space-sm) var(--omarchy-space-control-padding-x);
   background: var(--omarchy-control-normal-fill);
   border: var(--bw) solid var(--tone);
@@ -283,24 +284,33 @@ export class Toast extends OmarchyElement {
   static props = { glyph: ["string", ""], title: ["string", ""], text: ["string", ""], actionText: ["string", ""], countdown: ["number", -1], cursor: ["bool"] };
   static css = `
 :host {
-  display: block; position: relative; box-sizing: border-box; width: ${space(360)};
+  --line: max(1px, ${space(2)});
+  display: flex; flex-direction: column; justify-content: center; position: relative; box-sizing: border-box; width: ${space(360)};
   background: var(--omarchy-notifications-background); color: var(--omarchy-notifications-text);
   ${surfaceBorder("notifications")}
   border-radius: var(--omarchy-radius);
   padding: ${space(10)} ${space(12)};
 }
-.tint { position: absolute; inset: 0; display: none; background: ${alpha("var(--omarchy-notifications-text)", "var(--omarchy-control-hover-fill-alpha)")}; }
+:host(.has-countdown) {
+  padding-top: calc(${space(10)} - round(calc(var(--line) / 2), 1px));
+  padding-bottom: calc(${space(10)} + round(calc(var(--line) / 2), 1px));
+}
+.tint {
+  position: absolute; inset: 0; display: none;
+  border-radius: max(0px, calc(var(--omarchy-radius) - max(var(--omarchy-notifications-border-left), var(--omarchy-notifications-border-top))));
+  background: ${alpha("var(--omarchy-notifications-text)", "var(--omarchy-control-hover-fill-alpha)")};
+}
 :host([cursor]) .tint { display: block; }
 .row { position: relative; display: flex; align-items: center; gap: ${space(12)}; }
 .glyph { font-size: var(--omarchy-font-icon-large); line-height: var(--omarchy-line-icon-large, normal); white-space: pre; flex: none; }
 .words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: ${space(3)}; }
 .title { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); font-weight: bold; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
-.text { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); color: ${darker("var(--omarchy-notifications-text)", 1.15)}; overflow-wrap: anywhere; }
+.text { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); color: ${alpha("var(--omarchy-notifications-text)", 0.78)}; overflow-wrap: anywhere; }
 .glyph:empty, .text:empty { display: none; }
 .none { display: none !important; }
 .countdown {
   position: absolute; bottom: 0; inset-inline-start: var(--omarchy-radius);
-  width: calc((100% - 2 * var(--omarchy-radius)) * var(--left, 0)); height: max(1px, ${space(2)});
+  width: calc((100% - 2 * var(--omarchy-radius)) * var(--left, 0)); height: var(--line);
   background: var(--omarchy-notifications-countdown);
 }
 `;
@@ -323,7 +333,9 @@ export class Toast extends OmarchyElement {
     b.classList.toggle("none", !this.actionText);
     const c = this.$(".countdown");
     const left = Number(this.countdown);
-    c.classList.toggle("none", !(left >= 0));
+    const hasCd = left >= 0;
+    this.classList.toggle("has-countdown", hasCd);
+    c.classList.toggle("none", !hasCd);
     c.style.setProperty("--left", String(Math.max(0, Math.min(1, left))));
     if (this.title) this.setAttribute("aria-label", this.title);
   }

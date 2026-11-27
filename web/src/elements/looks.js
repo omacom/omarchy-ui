@@ -81,6 +81,44 @@ export function clickOnKeys(el, keys = ["Enter", " "]) {
 }
 
 const glyphCanvas = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+const inkCache = new Map();
+
+/**
+ * Glyphs centered by ink (Qt's OpticalGlyph): horizontally on the outline's middle, vertically on
+ * the line box rounded to whole points. A `.og` box holds one `<span>`; inkCenter(span) moves it.
+ */
+export const OG_CSS = `
+.og { position: relative; flex: none; }
+.og > span {
+  position: absolute; left: 50%; white-space: pre;
+  font-size: var(--f); line-height: var(--l, normal);
+  top: round(calc((100% - var(--l, 1em)) / 2), 1px);
+}`;
+
+/** `--f` / `--l` for a font token (`icon`, `caption`, `icon-large`, …). */
+export const ogFont = (token) => `--f: var(--omarchy-font-${token}); --l: var(--omarchy-line-${token}, normal);`;
+
+/** Shift `span` (left: 50%) so its ink, not its advance, is centered (Qt OpticalGlyph). */
+export function inkCenter(span) {
+  if (!glyphCanvas || !span.isConnected) return;
+  const text = span.textContent;
+  if (!text) {
+    span.style.marginLeft = "";
+    return;
+  }
+  const cs = getComputedStyle(span);
+  const size = parseFloat(cs.fontSize) || 12;
+  const key = `${cs.fontWeight}\n${size}\n${cs.fontFamily}\n${text}`;
+  let off = inkCache.get(key);
+  if (off === undefined) {
+    // Measured at 100× as Qt's OpticalGlyph does, so hinting doesn't round the outline.
+    glyphCanvas.font = `${cs.fontWeight} ${size * 100}px ${cs.fontFamily}`;
+    const m = glyphCanvas.measureText(text);
+    off = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 200;
+    inkCache.set(key, off);
+  }
+  span.style.marginLeft = `${-off}px`;
+}
 
 /**
  * Size a span holding an icon glyph as Qt sizes its Text: the advance, or the ink's right edge when
@@ -99,10 +137,23 @@ export function fitGlyph(span) {
   if (w > m.width + 0.5) span.style.width = `${w}px`;
 }
 
+/** Ceil a text span's natural width to whole pixels (avoids subpixel drift in Button / ButtonGroup). */
+export function ceilText(span) {
+  if (!glyphCanvas || !span.isConnected) return;
+  span.style.width = "";
+  const text = span.textContent;
+  if (!text) return;
+  const cs = getComputedStyle(span);
+  glyphCanvas.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const m = glyphCanvas.measureText(text);
+  const w = Math.max(m.width, m.actualBoundingBoxRight);
+  if (w > 0) span.style.width = `${Math.ceil(w - 1e-6)}px`;
+}
+
 /**
- * Optically center a single-glyph span in both X and Y by its tight ink bounds (matching Qt's
- * PanelActionButton): expand width when ink overhangs the advance and offset by whole pixels so
- * the ink center lands on the span box center.
+ * Optically center a single-glyph span horizontally by its tight ink bounds (matching Qt's
+ * PanelActionButton / OpticalGlyph): vertically stays on the line box, horizontally offsets by
+ * whole pixels so the ink center lands on the span box center.
  */
 export function centerGlyph(span) {
   if (!glyphCanvas || !span.isConnected) return;
@@ -113,23 +164,20 @@ export function centerGlyph(span) {
   const text = span.textContent;
   if (!text) return;
   const cs = getComputedStyle(span);
-  glyphCanvas.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-  const m = glyphCanvas.measureText(text);
-  const w = Math.max(m.width, m.actualBoundingBoxRight);
-  const boxW = w > m.width + 0.5 ? w : m.width;
-  if (w > m.width + 0.5) span.style.width = `${w}px`;
-  const inkW = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
-  const inkH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
-  if (!(inkW > 0 && inkH > 0)) return;
-  const inkCenterX = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
-  const dx = Math.round(boxW / 2 - inkCenterX);
   const size = parseFloat(cs.fontSize) || 12;
-  const fontAscent = Number.isFinite(m.fontBoundingBoxAscent) ? m.fontBoundingBoxAscent : size * 0.8;
-  const fontDescent = Number.isFinite(m.fontBoundingBoxDescent) ? m.fontBoundingBoxDescent : size * 0.2;
-  const dy = Math.round(((m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) - (fontAscent - fontDescent)) / 2);
-  if (dx !== 0 || dy !== 0) {
+  glyphCanvas.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const m1 = glyphCanvas.measureText(text);
+  const w = Math.max(m1.width, m1.actualBoundingBoxRight);
+  const boxW = w > m1.width + 0.5 ? w : m1.width;
+  if (w > m1.width + 0.5) span.style.width = `${w}px`;
+  glyphCanvas.font = `${cs.fontWeight} ${size * 100}px ${cs.fontFamily}`;
+  const m = glyphCanvas.measureText(text);
+  const inkW = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / 100;
+  if (!(inkW > 0)) return;
+  const inkCenterX = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 200;
+  const dx = Math.round(boxW / 2 - inkCenterX);
+  if (dx !== 0) {
     span.style.position = "relative";
-    if (dx !== 0) span.style.left = `${dx}px`;
-    if (dy !== 0) span.style.top = `${dy}px`;
+    span.style.left = `${dx}px`;
   }
 }

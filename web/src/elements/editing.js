@@ -182,16 +182,31 @@ export class TrimHandle extends OmarchyElement {
       const t = sp(4);
       const corner = edge.indexOf("-") > 0;
       const horizontal = edge === "top" || edge === "bottom";
-      const r = `${Math.min(small, t / 2)}px`;
+      const cr = `${Math.min(small, t / 2)}px`;
+      const aTL = edge === "bottom" || edge === "right" || edge === "bottom-right" ? cr : "0";
+      const aTR = edge === "bottom" || edge === "left" || edge === "bottom-left" ? cr : "0";
+      const aBL = edge === "top" || edge === "right" || edge === "top-right" ? cr : "0";
+      const aBR = edge === "top" || edge === "left" || edge === "top-left" ? cr : "0";
       Object.assign(a, {
         display: "",
         left: "0",
         top: `${corner && edge.indexOf("bottom") === 0 ? h - t : 0}px`,
         width: `${corner || horizontal ? w : t}px`,
         height: `${corner || horizontal ? t : h}px`,
-        borderRadius: r,
+        borderRadius: `${aTL} ${aTR} ${aBR} ${aBL}`,
       });
-      Object.assign(b, { display: corner ? "" : "none", left: `${edge.indexOf("right") > 0 ? w - t : 0}px`, top: "0", width: `${t}px`, height: `${h}px`, borderRadius: r });
+      const bTL = edge === "bottom-right" ? cr : "0";
+      const bTR = edge === "bottom-left" ? cr : "0";
+      const bBL = edge === "top-right" ? cr : "0";
+      const bBR = edge === "top-left" ? cr : "0";
+      Object.assign(b, {
+        display: corner ? "" : "none",
+        left: `${edge.indexOf("right") > 0 ? w - t : 0}px`,
+        top: "0",
+        width: `${t}px`,
+        height: `${h}px`,
+        borderRadius: `${bTL} ${bTR} ${bBR} ${bBL}`,
+      });
       g.display = "none";
     }
     this.setAttribute("aria-label", `${this.crop ? "Crop" : "Trim"} ${edge}`);
@@ -248,9 +263,9 @@ export class DragHandle extends OmarchyElement {
   static focusable = true;
   static props = { cursor: ["bool"] };
   static css = `
-:host { display: inline-block; position: relative; flex: none; width: ${space(16)}; height: ${space(22)}; outline: none; cursor: grab; touch-action: none; }
+:host { display: inline-flex; align-items: center; justify-content: center; position: relative; flex: none; width: ${space(16)}; height: ${space(22)}; outline: none; cursor: grab; touch-action: none; }
 :host(.dragging) { cursor: grabbing; }
-.grid { position: absolute; display: grid; grid-template-columns: repeat(2, auto); }
+.grid { display: grid; grid-template-columns: repeat(2, auto); }
 .dot { background: var(--omarchy-text-dim); }
 :host(.hot) .dot { background: var(--omarchy-foreground); }
 `;
@@ -296,12 +311,7 @@ export class DragHandle extends OmarchyElement {
     this.classList.toggle("dragging", !!this._dragging);
     const d = sp(3);
     const g = sp(3);
-    const w = sp(16);
-    const h = sp(22);
-    const grid = this.$(".grid").style;
-    grid.gap = `${g}px`;
-    grid.left = `${Math.round((w - (d * 2 + g)) / 2)}px`;
-    grid.top = `${Math.round((h - (d * 3 + g * 2)) / 2)}px`;
+    this.$(".grid").style.gap = `${g}px`;
     for (const dot of this.shadowRoot.querySelectorAll(".dot")) {
       Object.assign(dot.style, { width: `${d}px`, height: `${d}px`, borderRadius: `${Math.min(smallRadius(), d / 2)}px` });
     }
@@ -343,6 +353,8 @@ export class Scrubber extends OmarchyElement {
   static css = `
 :host {
   --knob: max(14px, round(calc(var(--omarchy-space-control-height) * 0.38), 1px));
+  --ring: max(1px, ${space(2)});
+  --inner-knob: max(4px, calc(var(--knob) - 2 * var(--ring)));
   --track: max(4px, round(calc(var(--omarchy-space-control-height) * 0.11), 1px));
   display: inline-flex; align-items: center; gap: var(--omarchy-space-control-gap); vertical-align: middle;
   width: ${space(360)}; height: max(${space(22)}, calc(var(--knob) + var(--omarchy-space-md)));
@@ -350,12 +362,12 @@ export class Scrubber extends OmarchyElement {
 }
 .time { font-size: var(--omarchy-font-body-small); line-height: var(--omarchy-line-body-small, normal); color: var(--omarchy-text-dim); white-space: pre; flex: none; }
 .bar { position: relative; flex: 1; align-self: stretch; cursor: pointer; touch-action: none; }
-.track, .fill { position: absolute; top: calc(50% - var(--track) / 2); height: var(--track); border-radius: calc(var(--track) / 2); left: calc(var(--knob) / 2); }
-.track { right: calc(var(--knob) / 2); background: var(--omarchy-track); }
+.track, .fill { position: absolute; top: calc(50% - var(--track) / 2); height: var(--track); border-radius: calc(var(--track) / 2); }
+.track { background: var(--omarchy-track); }
 .fill { background: var(--omarchy-foreground); }
 .knob {
-  position: absolute; top: calc(50% - var(--knob) / 2); width: var(--knob); height: var(--knob); border-radius: 50%; box-sizing: border-box;
-  background: var(--omarchy-foreground); border: max(1px, ${space(2)}) solid var(--surface, var(--omarchy-popups-background));
+  position: absolute; top: calc(50% - var(--inner-knob) / 2); width: var(--inner-knob); height: var(--inner-knob); border-radius: 50%;
+  background: var(--omarchy-foreground);
   transition: transform var(--omarchy-motion-fast) cubic-bezier(0.33, 1, 0.68, 1);
 }
 :host(.hot) .knob { transform: scale(1.15); }
@@ -408,10 +420,23 @@ export class Scrubber extends OmarchyElement {
     const p = this.duration > 0 ? clamp(this.position / this.duration, 0, 1) : 0;
     const bar = this.$(".bar");
     const k = knobSize();
-    const tw = bar.clientWidth - k;
-    const filled = Math.round(tw * p);
-    this.$(".fill").style.width = `${Math.max(0, filled)}px`;
-    this.$(".knob").style.left = `${k / 2 + filled - k / 2}px`;
+    const r = ring();
+    const innerK = Math.max(4, k - r * 2);
+    const tx = k / 2;
+    const tw = Math.max(0, bar.clientWidth - k);
+    const knobCenter = tx + Math.round(tw * p);
+    const fillW = Math.max(0, Math.min(tw, knobCenter - k / 2 - tx));
+    const unStart = Math.min(tx + tw, Math.max(tx, knobCenter + k / 2));
+    const unW = Math.max(0, tx + tw - unStart);
+    const fillEl = this.$(".fill");
+    fillEl.style.left = `${tx}px`;
+    fillEl.style.width = `${fillW}px`;
+    fillEl.style.display = fillW > 0 ? "" : "none";
+    const trackEl = this.$(".track");
+    trackEl.style.left = `${unStart}px`;
+    trackEl.style.width = `${unW}px`;
+    trackEl.style.display = unW > 0 ? "" : "none";
+    this.$(".knob").style.left = `${knobCenter - innerK / 2}px`;
     if (this.surfaceColor) this.style.setProperty("--surface", this.surfaceColor);
     this.classList.toggle("hot", this.cursor || this._hover || this._pressed || this.matches(":focus"));
     this.setAttribute("aria-valuenow", String(this.position));
@@ -440,8 +465,9 @@ export class Timeline extends OmarchyElement {
     cursor: ["bool"],
   };
   static css = `
-:host { display: block; position: relative; overflow: hidden; width: ${space(720)}; height: ${space(160)}; outline: none; user-select: none; -webkit-user-select: none; touch-action: none; }
+:host { display: block; position: relative; width: ${space(720)}; height: ${space(160)}; outline: none; user-select: none; -webkit-user-select: none; touch-action: none; }
 .scrub { position: absolute; inset: 0; }
+.lanes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .tick { position: absolute; width: 1px; background: var(--omarchy-text-faint); pointer-events: none; }
 .tlabel { position: absolute; font-size: var(--omarchy-font-caption); line-height: var(--omarchy-line-caption, normal); color: var(--omarchy-text-dim); white-space: pre; pointer-events: none; }
 .lane { position: absolute; left: 0; background: var(--omarchy-control-normal-fill); pointer-events: none; }
@@ -460,7 +486,7 @@ export class Timeline extends OmarchyElement {
   font-size: var(--omarchy-font-body-small); line-height: var(--omarchy-line-body-small, normal); color: var(--omarchy-foreground);
 }
 .clabel > span { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
-.clip.sel .clabel { font-weight: bold; left: calc(${space(8)} + var(--omarchy-space-md)); right: calc(${space(8)} + var(--omarchy-space-md)); }
+.clip.sel .clabel { font-weight: bold; left: calc(${space(8)} + var(--omarchy-space-control-padding-x)); right: calc(${space(8)} + var(--omarchy-space-control-padding-x)); }
 .clip omarchy-trim-handle { position: absolute; top: 0; }
 .playhead { position: absolute; pointer-events: none; --ph: var(--omarchy-accent); }
 :host(.hot) .playhead { --ph: ${hotMix("var(--omarchy-accent)")}; }
@@ -682,15 +708,17 @@ export class Timeline extends OmarchyElement {
       }
     }
 
-    // The playhead: a head on the ruler's bottom edge and a line to the bottom.
+    // The playhead: a head on the ruler's bottom edge and a line to the bottom of the last lane.
     const lw = ring();
     const head = sp(10);
     const ph = this.$(".playhead");
     const visible = this.position >= this.viewStart && this.position <= end;
     const py = rulerH - head;
-    Object.assign(ph.style, { display: visible ? "" : "none", left: `${this.xAt(this.position) - Math.round(head / 2)}px`, top: `${py}px`, width: `${head}px`, height: `${H - py}px` });
+    const pBottom = tracks.length > 0 ? rulerH + (tracks.length - 1) * (laneH + laneGap) + laneH : H;
+    const phH = Math.max(head, pBottom - py);
+    Object.assign(ph.style, { display: visible ? "" : "none", left: `${this.xAt(this.position) - Math.round(head / 2)}px`, top: `${py}px`, width: `${head}px`, height: `${phH}px` });
     Object.assign(this.$(".phead").style, { left: "0", top: "0", width: `${head}px`, height: `${head}px`, borderRadius: `${small}px` });
-    Object.assign(this.$(".pline").style, { left: `${Math.round((head - lw) / 2)}px`, top: `${head}px`, width: `${lw}px`, height: `${H - py - head}px` });
+    Object.assign(this.$(".pline").style, { left: `${Math.round((head - lw) / 2)}px`, top: `${head}px`, width: `${lw}px`, height: `${phH - head}px` });
     const sm = spacing("sm", 4);
     Object.assign(this.$(".phit").style, { left: `${-sm}px`, top: "0", width: `${head + sm * 2}px`, height: `${head}px` });
     this.setAttribute("aria-valuenow", String(this.position));
@@ -760,13 +788,17 @@ export class ColorPicker extends OmarchyElement {
 .huebar { background: linear-gradient(to bottom, #ff0000 0%, #ffff00 16.6667%, #00ff00 33.3333%, #00ffff 50%, #0000ff 66.6667%, #ff00ff 83.3333%, #ff0000 100%); }
 .track { background: var(--omarchy-track); }
 .knob {
-  position: absolute; width: var(--knob); height: var(--knob); border-radius: 50%; box-sizing: border-box;
-  border: var(--ring) solid var(--surface, var(--omarchy-popups-background)); background: var(--omarchy-foreground);
+  position: absolute; border-radius: 50%; box-sizing: border-box;
+  background: var(--omarchy-background); padding: 1px;
   transition: transform var(--omarchy-motion-fast) cubic-bezier(0.33, 1, 0.68, 1); pointer-events: none;
 }
+.knob.sv { width: var(--knob); height: var(--knob); }
+.knob.sk { --pad: ${space(2)}; --sk: max(8px, calc(${space(14)} - 2 * var(--pad))); width: var(--sk); height: var(--sk); }
+.knob .k-mid { width: 100%; height: 100%; border-radius: 50%; background: var(--omarchy-foreground); padding: 1px; box-sizing: border-box; }
+.knob .k-fill { width: 100%; height: 100%; border-radius: 50%; }
 .knob.hot { transform: scale(1.15); }
 .field { display: flex; gap: var(--omarchy-space-md); align-items: center; }
-.preview { flex: none; box-sizing: border-box; border: 1px solid var(--omarchy-control-normal-border); border-radius: var(--omarchy-radius-small); background-clip: padding-box; }
+.preview { flex: none; box-sizing: border-box; border: 1px solid var(--omarchy-control-normal-border); border-radius: var(--omarchy-radius); background-clip: padding-box; }
 .field omarchy-text-field { flex: 1; min-width: 0; width: auto; }
 .palette { display: flex; gap: var(--omarchy-space-md); }
 .palette:empty { display: none; }
@@ -837,9 +869,9 @@ export class ColorPicker extends OmarchyElement {
   setup() {
     this.shadowRoot.innerHTML = `
 <div class="top">
-  <div class="square" tabindex="0" role="slider" aria-label="Saturation and value"><div class="layer hue"></div><div class="layer white"></div><div class="layer black"></div><div class="knob sv"></div></div>
-  <div class="strip huestrip" tabindex="0" role="slider" aria-label="Hue" aria-orientation="vertical"><div class="layer huebar"></div><div class="knob"></div></div>
-  <div class="strip alpha" tabindex="0" role="slider" aria-label="Alpha" aria-orientation="vertical"><div class="layer track"></div><div class="layer fade"></div><div class="knob"></div></div>
+  <div class="square" tabindex="0" role="slider" aria-label="Saturation and value"><div class="layer hue"></div><div class="layer white"></div><div class="layer black"></div><div class="knob sv"><div class="k-mid"><div class="k-fill"></div></div></div></div>
+  <div class="strip huestrip" tabindex="0" role="slider" aria-label="Hue" aria-orientation="vertical"><div class="layer huebar"></div><div class="knob sk"><div class="k-mid"></div></div></div>
+  <div class="strip alpha" tabindex="0" role="slider" aria-label="Alpha" aria-orientation="vertical"><div class="layer track"></div><div class="layer fade"></div><div class="knob sk"><div class="k-mid"></div></div></div>
 </div>
 <div class="field"><div class="preview"></div><omarchy-text-field spellcheck="false" aria-label="Hex"></omarchy-text-field></div>
 <div class="palette" role="listbox" aria-label="Palette"></div>`;
@@ -876,8 +908,10 @@ export class ColorPicker extends OmarchyElement {
     const strip = (el, picked, fraction) => {
       const pick = (e) => {
         const r = el.getBoundingClientRect();
-        const k = knobSize();
-        picked(clamp((e.clientY - r.top - k / 2) / Math.max(1, r.height - k), 0, 1));
+        const pad = sp(2);
+        const sk = Math.max(8, sp(14) - pad * 2);
+        const span = Math.max(1, r.height - sk - pad * 2);
+        picked(clamp((e.clientY - r.top - pad - sk / 2) / span, 0, 1));
       };
       drag(el, {
         down: (e) => {
@@ -943,14 +977,16 @@ export class ColorPicker extends OmarchyElement {
     const k = knobSize();
     const square = this.$(".square");
     const sv = this.$(".knob.sv");
-    sv.style.background = opaque;
-    sv.style.left = `${Math.round(this.saturation * square.clientWidth - k / 2)}px`;
-    sv.style.top = `${Math.round((1 - this.value) * square.clientHeight - k / 2)}px`;
+    sv.querySelector(".k-fill").style.background = opaque;
+    sv.style.left = `${Math.max(0, Math.min(square.clientWidth - k, Math.round(this.saturation * square.clientWidth - k / 2)))}px`;
+    sv.style.top = `${Math.max(0, Math.min(square.clientHeight - k, Math.round((1 - this.value) * square.clientHeight - k / 2)))}px`;
     sv.classList.toggle("hot", this.cursor || square.matches(":focus") || !!this._squareDown);
+    const pad = sp(2);
+    const sk = Math.max(8, sp(14) - pad * 2);
     const place = (el, fraction) => {
       const knob = el.querySelector(".knob");
-      knob.style.left = `${Math.round((el.clientWidth - k) / 2)}px`;
-      knob.style.top = `${Math.round(fraction * (el.clientHeight - k))}px`;
+      knob.style.left = `${Math.round((el.clientWidth - sk) / 2)}px`;
+      knob.style.top = `${pad + Math.round(fraction * Math.max(0, el.clientHeight - sk - pad * 2))}px`;
       knob.classList.toggle("hot", el.matches(":focus") || !!el._down);
     };
     place(this.$(".huestrip"), this.hue);

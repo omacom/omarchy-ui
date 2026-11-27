@@ -2,7 +2,7 @@
 // qt/qml/Omarchy/Ui/{MultiSelect,ColorWell,SwatchStrip}.qml draw them.
 
 import { OmarchyElement, esc, readingKey } from "./base.js";
-import { LOOK_CSS, alpha, clickOnKeys, darker, space, trackPointer } from "./looks.js";
+import { LOOK_CSS, alpha, clickOnKeys, space, trackPointer } from "./looks.js";
 import { isOpen, place, popoverCss } from "./popup.js";
 
 const px = (el, name, fallback) => Number.parseFloat(getComputedStyle(el).getPropertyValue(name)) || fallback;
@@ -43,7 +43,6 @@ export class MultiSelect extends OmarchyElement {
   };
   static css = `${LOOK_CSS}${popoverCss("popups")}
 :host { display: inline-flex; flex-direction: column; gap: var(--omarchy-space-label-gap); width: var(--omarchy-space-searchable-dropdown-width); vertical-align: top; }
-:host(:not([hide-label])) { min-height: calc(var(--omarchy-space-control-height) + var(--omarchy-space-huge)); }
 .label { font-size: var(--omarchy-font-caption); line-height: var(--omarchy-line-caption, normal); font-weight: bold; color: var(--omarchy-text-dim); white-space: pre; }
 .label:empty, :host([hide-label]) .label { display: none; }
 .trigger {
@@ -53,7 +52,7 @@ export class MultiSelect extends OmarchyElement {
 }
 .value { flex: 1; min-width: 0; font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); white-space: pre; overflow: hidden; text-overflow: ellipsis; margin-right: var(--omarchy-space-md); }
 .value.none { color: var(--omarchy-text-dim); }
-.chev { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); color: ${darker("var(--omarchy-popups-text)", 1.2)}; }
+.chev { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); color: var(--omarchy-text-dim); }
 .pop {
   border-width: var(--omarchy-control-normal-border-width);
   padding: var(--omarchy-space-hairline);
@@ -71,10 +70,11 @@ export class MultiSelect extends OmarchyElement {
 .row {
   flex: none; display: flex; align-items: center; gap: var(--omarchy-space-row-gap);
   min-height: var(--omarchy-space-popup-row-height); padding: calc(var(--omarchy-space-row-padding-x) / 2) var(--omarchy-space-control-padding-x);
+  border-radius: var(--omarchy-radius-small);
   cursor: pointer;
 }
 .row.cur { background: var(--omarchy-control-hover-fill); }
-.row .box { flex: none; width: ${space(16)}; height: ${space(16)}; border-radius: max(2px, calc(var(--omarchy-radius) / 2));
+.row .box { flex: none; width: ${space(16)}; height: ${space(16)}; border-radius: var(--omarchy-radius-small);
   display: flex; align-items: center; justify-content: center; }
 .row .check { display: none; color: var(--omarchy-control-selected-text); font-weight: bold; font-size: round(calc(${space(16)} * 0.85), 1px); line-height: 1; }
 .row.on .check { display: block; }
@@ -224,16 +224,18 @@ export class MultiSelect extends OmarchyElement {
     const row = px(this, "--omarchy-space-popup-row-height", 28);
     const lgap = px(this, "--omarchy-space-label-gap", 4);
     const scale = px(this, "--omarchy-space-scale", 1);
-    const extra = Math.max(1, Math.round(50 * scale));
+    const pcs = getComputedStyle(pop);
+    const padY = (parseFloat(pcs.paddingTop) || 0) + (parseFloat(pcs.paddingBottom) || 0)
+      + (parseFloat(pcs.borderTopWidth) || 0) + (parseFloat(pcs.borderBottomWidth) || 0);
+    const head = this.$(".head").offsetHeight;
+    const chrome = head + 1 + padY;
     const rows = [...this.list.querySelectorAll(".row")];
     const content = rows.reduce((h, r) => h + r.offsetHeight, 0) + Math.max(0, rows.length - 1) * lgap;
     const t = this.trigger.getBoundingClientRect();
     const below = Math.max(0, document.documentElement.clientHeight - (t.bottom + gap) - Math.max(1, Math.round(12 * scale)));
-    const height = Math.min(below, content + extra, row * 6 + 5 * lgap + extra);
+    const height = Math.min(below, content + chrome, row * 6 + 5 * lgap + chrome);
     pop.style.height = `${height}px`;
-    const head = this.$(".head").offsetHeight;
-    // As Qt sizes the list: the popup's height less the header, xxs and the rule.
-    this.list.style.height = `${Math.max(0, height - head - gap - 1)}px`;
+    this.list.style.height = `${Math.max(0, height - chrome)}px`;
     place(pop, this.trigger, { gap, width: this.trigger.offsetWidth });
     this.trigger.setAttribute("aria-expanded", "true");
     document.addEventListener("pointerdown", this._outside, true);
@@ -299,12 +301,12 @@ export class ColorWell extends OmarchyElement {
   width: calc(var(--ww) + 2 * var(--pad)); height: calc(var(--wh) + 2 * var(--pad));
   cursor: pointer; outline: none;
 }
-.ring { position: absolute; inset: 0; display: none; border-radius: var(--omarchy-radius-small); }
+.ring { position: absolute; inset: 0; display: none; border-radius: calc(min(var(--omarchy-radius), calc(var(--omarchy-radius-small) + var(--pad))) * var(--omarchy-rounded)); }
 .ring.on { display: block; }
 .well { position: absolute; left: var(--pad); top: var(--pad); width: var(--ww); height: var(--wh); border-radius: var(--omarchy-radius-small);
   padding: var(--omarchy-space-xxs); transition: transform var(--omarchy-motion-press) cubic-bezier(0.33, 1, 0.68, 1); }
 .well.down { transform: scale(0.97); }
-.color { width: 100%; height: 100%; border-radius: max(0px, calc(var(--omarchy-radius-small) - var(--omarchy-space-xxs))); }
+.color { width: 100%; height: 100%; border-radius: max(0px, calc(var(--omarchy-radius-small) - var(--omarchy-control-normal-border-top) - var(--omarchy-space-xxs))); }
 `;
   setup() {
     this.shadowRoot.innerHTML = `<div class="ring box" data-border="hover"></div><div class="well box" data-fill="normal" data-border="normal"><div class="color"></div></div>`;
@@ -334,7 +336,7 @@ export class SwatchStrip extends OmarchyElement {
 }
 .cell { position: relative; width: calc(var(--chip) + 2 * (var(--gap) + var(--ring))); aspect-ratio: 1; cursor: pointer; flex: none; }
 .ring { position: absolute; inset: 0; display: none; border: var(--ring) solid ${alpha("var(--omarchy-foreground)", "var(--omarchy-control-hover-border-alpha)")};
-  border-radius: calc((var(--omarchy-radius-small) + var(--gap)) * var(--omarchy-rounded)); }
+  border-radius: calc((var(--omarchy-radius-small) + var(--gap) + var(--ring)) * var(--omarchy-rounded)); }
 .cell.hot .ring { display: block; border-color: var(--omarchy-control-hover-border); }
 .cell.chosen .ring { display: block; border-color: var(--omarchy-accent); }
 .chip { position: absolute; left: calc(var(--gap) + var(--ring)); top: calc(var(--gap) + var(--ring)); width: var(--chip); height: var(--chip);

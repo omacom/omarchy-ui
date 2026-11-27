@@ -4,48 +4,10 @@
 // IconRail.qml, …): the same metrics, states, keys and strings.
 
 import { OmarchyElement, esc, readingKey, surfaceBorder } from "./base.js";
-import { LOOK_CSS, space } from "./looks.js";
+import { LOOK_CSS, OG_CSS, inkCenter, ogFont, space } from "./looks.js";
 import { isOpen } from "./popup.js";
 
-// ---------------------------------------------------------------------------------------------
-// Glyphs centered by ink (Qt's OpticalGlyph): horizontally on the outline's middle, vertically on
-// the line box rounded to whole points. A `.og` box holds one `<span>`; inkCenter(span) moves it.
-
-const OG_CSS = `
-.og { position: relative; flex: none; }
-.og > span {
-  position: absolute; left: 50%; white-space: pre;
-  font-size: var(--f); line-height: var(--l, normal);
-  top: round(calc((100% - var(--l, 1em)) / 2), 1px);
-}`;
-
-/** `--f` / `--l` for a font token (`icon`, `caption`, `icon-large`, …). */
-const ogFont = (token) => `--f: var(--omarchy-font-${token}); --l: var(--omarchy-line-${token}, normal);`;
-
 const inkCanvas = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
-const inkCache = new Map();
-
-/** Shift `span` (left: 50%) so its ink, not its advance, is centered (Qt OpticalGlyph). */
-function inkCenter(span) {
-  if (!inkCanvas || !span.isConnected) return;
-  const text = span.textContent;
-  if (!text) {
-    span.style.marginLeft = "";
-    return;
-  }
-  const cs = getComputedStyle(span);
-  const size = parseFloat(cs.fontSize) || 12;
-  const key = `${cs.fontWeight}\n${size}\n${cs.fontFamily}\n${text}`;
-  let off = inkCache.get(key);
-  if (off === undefined) {
-    // Measured at 100× as Qt's OpticalGlyph does, so hinting doesn't round the outline.
-    inkCanvas.font = `${cs.fontWeight} ${size * 100}px ${cs.fontFamily}`;
-    const m = inkCanvas.measureText(text);
-    off = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 200;
-    inkCache.set(key, off);
-  }
-  span.style.marginLeft = `${-off}px`;
-}
 
 /** ⌈advance⌉ of `text` in `el`'s font at `token` size (Qt's TextMetrics.advanceWidth). */
 function advance(el, text, token) {
@@ -207,6 +169,7 @@ export class MenuItem extends OmarchyElement {
 :host([disabled]) .row { --ink: var(--omarchy-text-faint); cursor: default; }
 .icon { width: var(--omarchy-font-icon); height: 100%; margin-right: var(--omarchy-space-control-gap); ${ogFont("icon")} }
 :host(:not([reserve-icon])) .icon { display: none; }
+.mid { flex: 1; min-width: 0; display: flex; align-items: baseline; }
 .label { flex: none; font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); white-space: pre; }
 .space { flex: 1; min-width: 0; }
 .hint { flex: none; margin-left: var(--omarchy-space-huge); font-size: var(--omarchy-font-body-small); line-height: var(--omarchy-line-body-small, normal); white-space: pre; color: var(--omarchy-text-dim); }
@@ -214,13 +177,21 @@ export class MenuItem extends OmarchyElement {
 .hint:empty { display: none; }
 .mark { width: var(--omarchy-font-icon); height: 100%; margin-left: var(--omarchy-space-control-gap); color: var(--omarchy-text-dim); ${ogFont("icon-small")} }
 .mark.check { color: var(--omarchy-accent); ${ogFont("body")} }
-.mark.dot { color: var(--omarchy-accent); ${ogFont("caption")} }
+.mark .rdot {
+  display: none; position: absolute;
+  width: ${space(6)}; height: ${space(6)}; border-radius: 50%;
+  left: round(calc((100% - ${space(6)}) / 2), 1px);
+  top: round(calc((100% - ${space(6)}) / 2), 1px);
+  background: var(--omarchy-accent);
+}
+.mark.dot .rdot { display: block; }
 :host([disabled]) .mark { color: var(--omarchy-text-faint); }
+:host([disabled]) .mark .rdot { background: var(--omarchy-text-faint); }
 :host(:not([reserve-mark])) .mark { display: none; }
 .sub { display: contents; }
 `;
   setup() {
-    this.shadowRoot.innerHTML = `<div class="row" part="row"><div class="og icon"><span></span></div><span class="label" part="label"></span><span class="space"></span><span class="hint" part="hint"></span><div class="og mark"><span></span></div></div><div class="sub"><slot></slot></div>`;
+    this.shadowRoot.innerHTML = `<div class="row" part="row"><div class="og icon"><span></span></div><div class="mid"><span class="label" part="label"></span><span class="space"></span><span class="hint" part="hint"></span></div><div class="og mark"><span></span><div class="rdot"></div></div></div><div class="sub"><slot></slot></div>`;
     this.setAttribute("role", "menuitem");
     const row = this.$(".row");
     row.addEventListener("pointerenter", () => {
@@ -299,7 +270,7 @@ export class MenuItem extends OmarchyElement {
     const mark = this.checkable && this.checked;
     markBox.className = `og mark${mark ? (this.exclusive ? " dot" : " check") : ""}`;
     const markSpan = markBox.firstElementChild;
-    markSpan.textContent = mark ? (this.exclusive ? "●" : "✓") : this.isSubmenuRow ? "\u{F054}" : "";
+    markSpan.textContent = mark && !this.exclusive ? "✓" : !mark && this.isSubmenuRow ? "\u{F054}" : "";
     const row = this.$(".row");
     row.classList.toggle("hot", this.hot);
     row.classList.toggle("down", !!this._down && !this.disabled);
@@ -669,12 +640,12 @@ export class Tabs extends Chooser {
 .tab:hover, .tab.hot { background: var(--omarchy-control-hover-fill); color: var(--omarchy-foreground); }
 .tab.down { background: var(--omarchy-control-pressed-fill); }
 .tab.sel { font-weight: bold; color: var(--omarchy-control-selected-text); }
-.rule { position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--omarchy-track); }
-.bar { position: absolute; bottom: 0; height: var(--omarchy-space-xxs); background: var(--omarchy-accent);
+.rule { position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--omarchy-track); pointer-events: none; }
+.bar { position: absolute; bottom: 0; height: var(--omarchy-space-xxs); background: var(--omarchy-accent); pointer-events: none;
   transition: left var(--omarchy-motion-press) var(--omarchy-ease-out), width var(--omarchy-motion-press) var(--omarchy-ease-out); }
 `;
   setup() {
-    this.shadowRoot.innerHTML = `<div class="rule"></div><div class="row"></div><div class="bar"></div>`;
+    this.shadowRoot.innerHTML = `<div class="row"></div><div class="rule"></div><div class="bar"></div>`;
     this.wire((e) => {
       const k = readingKey(e, true);
       if (k === "ArrowLeft") return -1;

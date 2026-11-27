@@ -3,7 +3,7 @@
 // TextField, NumberField, Dropdown, PanelSlider): the same metrics, states, keys and strings.
 
 import { OmarchyElement, esc, optionIcon, optionLabel, optionValue, readingKey } from "./base.js";
-import { LOOK_CSS, alpha, centerGlyph, clickOnKeys, fitGlyph, reserve, space, trackPointer } from "./looks.js";
+import { LOOK_CSS, OG_CSS, alpha, ceilText, clickOnKeys, inkCenter, ogFont, reserve, space, trackPointer } from "./looks.js";
 import { isOpen, place, popoverCss } from "./popup.js";
 import { omarchyApi } from "../runtime.js";
 
@@ -101,9 +101,12 @@ export class Button extends OmarchyElement {
   }
   update() {
     const box = this.$(".box");
-    this.$(".icon").textContent = this.icon;
-    fitGlyph(this.$(".icon"));
-    this.$(".label").textContent = this.text;
+    const icon = this.$(".icon");
+    const label = this.$(".label");
+    icon.textContent = this.icon;
+    label.textContent = this.text;
+    ceilText(icon);
+    ceilText(label);
     box.classList.toggle("has-label", this.text !== "");
     const hot = !!this._hot || this.cursor;
     const focus = !!this._focused;
@@ -138,19 +141,18 @@ export class IconButton extends OmarchyElement {
     foreground: ["string", null],
     size: ["number", 0],
   };
-  static css = `${LOOK_CSS}${tooltipCss}
+  static css = `${LOOK_CSS}${OG_CSS}${tooltipCss}
 :host {
   --size: calc(2 * round(down, calc(round(max(${space(22)}, calc(var(--omarchy-font-icon) + 2 * var(--omarchy-space-sm))), 1px) / 2), 1px) + 1px);
   display: inline-flex; vertical-align: middle; width: var(--size); height: var(--size); flex: none;
   cursor: pointer; outline: none; user-select: none; -webkit-user-select: none;
 }
 :host([disabled]) { pointer-events: none; cursor: default; }
-.box { flex: 1; display: flex; align-items: center; justify-content: center; border-radius: var(--omarchy-radius-small); transition: background-color 60ms; color: var(--ink, var(--omarchy-foreground)); }
+.box { position: relative; flex: 1; border-radius: var(--omarchy-radius-small); transition: background-color 60ms; color: var(--ink, var(--omarchy-foreground)); ${ogFont("icon")} }
 :host([disabled]) .box { color: var(--omarchy-text-faint); }
-.icon { font-size: var(--omarchy-font-icon); line-height: var(--omarchy-line-icon, normal); white-space: pre; }
 `;
   setup() {
-    this.shadowRoot.innerHTML = `<div class="box" part="box"><span class="icon" part="icon"></span></div>`;
+    this.shadowRoot.innerHTML = `<div class="box og" part="box"><span class="icon" part="icon"></span></div>`;
     this.setAttribute("role", "button");
     if (this.hasAttribute("nofocus")) this.removeAttribute("tabindex");
     trackPointer(this);
@@ -159,8 +161,9 @@ export class IconButton extends OmarchyElement {
   }
   update() {
     const box = this.$(".box");
-    this.$(".icon").textContent = this.icon;
-    centerGlyph(this.$(".icon"));
+    const icon = this.$(".icon");
+    icon.textContent = this.icon;
+    inkCenter(icon);
     const hot = (!!this._hot || this.cursor) && !this.disabled;
     const focus = !!this._focused;
     box.dataset.fill = focus ? "focus" : hot ? "hover" : "none";
@@ -419,14 +422,14 @@ export class NumberField extends OmarchyElement {
   static delegatesFocus = true;
   static props = { label: ["string", ""], value: ["number", 0], from: ["number", 0], to: ["number", 100], step: ["number", 1], cursor: ["bool"] };
   static css = `${LOOK_CSS}
-:host { display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--omarchy-space-md); vertical-align: middle; }
-.label { font-size: var(--omarchy-font-body-small); line-height: var(--omarchy-line-body-small, normal); color: var(--omarchy-text-dim); white-space: pre; }
+:host { display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--omarchy-space-label-gap); vertical-align: middle; }
+.label { font-size: var(--omarchy-font-caption); line-height: var(--omarchy-line-caption, normal); font-weight: bold; color: var(--omarchy-text-dim); white-space: pre; }
 .label:empty { display: none; }
 .spin {
   --h: max(var(--omarchy-space-control-height), calc(var(--omarchy-font-body) + 2 * var(--omarchy-space-control-padding-y)));
   position: relative; width: var(--omarchy-space-number-field-width); height: var(--h);
   display: flex; align-items: center;
-  padding: 0 calc(var(--omarchy-space-control-padding-x));
+  padding: 0 calc(var(--h) - 2 * var(--bt) + var(--omarchy-space-sm));
 }
 input {
   all: unset; box-sizing: border-box; flex: 1; min-width: 0; text-align: center;
@@ -435,10 +438,10 @@ input {
 }
 input::selection { background: var(--omarchy-control-selection-fill); color: var(--omarchy-foreground); }
 .step {
-  position: absolute; top: calc(var(--bt) - var(--bt) * 0); top: 0;
+  position: absolute; top: 0;
   width: calc(var(--h) - 2 * var(--bt)); height: calc(var(--h) - 2 * var(--bt));
   display: flex; align-items: center; justify-content: center;
-  border-radius: var(--omarchy-radius-small); cursor: pointer; user-select: none; -webkit-user-select: none;
+  border-radius: max(0px, calc(var(--omarchy-radius) - var(--bt))); cursor: pointer; user-select: none; -webkit-user-select: none;
   font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); color: var(--omarchy-foreground);
 }
 .step:hover { background: var(--omarchy-control-hover-fill); }
@@ -515,7 +518,6 @@ export class Dropdown extends OmarchyElement {
   static props = { label: ["string", ""], value: ["string", ""], options: ["json", () => []], cursor: ["bool"], showLabel: ["bool"], hideLabel: ["bool"] };
   static css = `${LOOK_CSS}${popoverCss("popups")}
 :host { display: inline-flex; flex-direction: column; gap: var(--omarchy-space-label-gap); width: var(--omarchy-space-dropdown-width); vertical-align: middle; }
-:host(:not([hide-label])) { min-height: calc(var(--omarchy-space-control-height) + var(--omarchy-space-huge)); }
 .label { font-size: var(--omarchy-font-caption); line-height: var(--omarchy-line-caption, normal); font-weight: bold; color: var(--omarchy-text-dim); white-space: pre; }
 .label:empty, :host([hide-label]) .label { display: none; }
 .trigger {
@@ -533,6 +535,7 @@ export class Dropdown extends OmarchyElement {
 }
 .pop:not(:popover-open) { display: none; }
 .opt { flex: none; height: var(--omarchy-space-popup-row-height); display: flex; align-items: center; padding: 0 var(--omarchy-space-control-padding-x);
+  border-radius: var(--omarchy-radius-small);
   font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); white-space: pre; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .opt.cur { background: var(--omarchy-control-hover-fill); color: var(--omarchy-control-hover-text, var(--omarchy-foreground)); }
 `;
@@ -639,6 +642,8 @@ export class Slider extends OmarchyElement {
   static css = `
 :host {
   --knob: max(14px, round(calc(var(--omarchy-space-control-height) * 0.38), 1px));
+  --ring: max(1px, ${space(2)});
+  --inner-knob: max(4px, calc(var(--knob) - 2 * var(--ring)));
   --track: max(4px, round(calc(var(--omarchy-space-control-height) * 0.11), 1px));
   --p: 0;
   display: inline-block; position: relative; vertical-align: middle;
@@ -646,20 +651,23 @@ export class Slider extends OmarchyElement {
   cursor: pointer; outline: none; touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .track, .fill { position: absolute; top: calc(50% - var(--track) / 2); height: var(--track); border-radius: calc(var(--track) / 2); }
-.track { left: calc(var(--knob) / 2); right: calc(var(--knob) / 2); background: var(--omarchy-control-selected-fill); }
-.fill { left: calc(var(--knob) / 2); width: calc((100% - var(--knob)) * var(--p)); background: var(--omarchy-foreground); }
+.fill { inset-inline-start: calc(var(--knob) / 2); width: max(0px, calc((100% - var(--knob)) * var(--p) - var(--knob) / 2)); background: var(--omarchy-foreground); }
+.track { inset-inline-end: calc(var(--knob) / 2); width: max(0px, calc((100% - var(--knob)) * (1 - var(--p)) - var(--knob) / 2)); background: var(--omarchy-control-selected-fill); }
 .tick { position: absolute; top: calc(50% - (var(--track) + ${space(4)}) / 2); height: calc(var(--track) + ${space(4)});
   width: ${space(2)}; border-radius: 1px; background: var(--omarchy-popups-background);
-  left: calc(var(--knob) / 2 + (100% - var(--knob)) * var(--f) - ${space(2)} / 2); }
+  inset-inline-start: calc(var(--knob) / 2 + (100% - var(--knob)) * var(--f) - ${space(2)} / 2); }
 .knob {
-  position: absolute; top: calc(50% - var(--knob) / 2); left: calc((100% - var(--knob)) * var(--p));
-  width: var(--knob); height: var(--knob); border-radius: 50%;
-  background: var(--omarchy-foreground); border: ${space(2)} solid var(--omarchy-popups-background);
+  position: absolute; top: calc(50% - var(--inner-knob) / 2);
+  inset-inline-start: calc((100% - var(--knob)) * var(--p) + (var(--knob) - var(--inner-knob)) / 2);
+  width: var(--inner-knob); height: var(--inner-knob); border-radius: 50%;
+  background: var(--omarchy-foreground);
   transition: transform 110ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 .knob.hot { transform: scale(1.15); }
-:host(:not(.dragging)) .knob, :host(:not(.dragging)) .fill { transition: transform 110ms cubic-bezier(0.33, 1, 0.68, 1), left 140ms cubic-bezier(0.33, 1, 0.68, 1), width 140ms cubic-bezier(0.33, 1, 0.68, 1); }
-:host([data-omarchy-still]) .knob, :host([data-omarchy-still]) .fill { transition: none; }
+:host(:not(.dragging)) .knob, :host(:not(.dragging)) .fill, :host(:not(.dragging)) .track {
+  transition: transform 110ms cubic-bezier(0.33, 1, 0.68, 1), inset-inline-start 140ms cubic-bezier(0.33, 1, 0.68, 1), width 140ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+:host([data-omarchy-still]) .knob, :host([data-omarchy-still]) .fill, :host([data-omarchy-still]) .track { transition: none; }
 `;
   setup() {
     this.shadowRoot.innerHTML = `<div class="track"></div><div class="fill"></div><div class="ticks"></div><div class="knob"></div>`;
@@ -668,7 +676,7 @@ export class Slider extends OmarchyElement {
     trackPointer(this);
     const fromX = (x) => {
       const r = this.getBoundingClientRect();
-      const k = this.$(".knob").offsetWidth;
+      const k = parseFloat(getComputedStyle(this).getPropertyValue("--knob")) || 14;
       let f = Math.max(0, Math.min(1, (x - r.left - k / 2) / Math.max(1, r.width - k)));
       if (getComputedStyle(this).direction === "rtl") f = 1 - f;
       let v = this.min + f * (this.max - this.min);
@@ -714,6 +722,8 @@ export class Slider extends OmarchyElement {
       e.preventDefault();
       this.set(this.value + (e.deltaY < 0 ? this.step : -this.step));
     }, { passive: false });
+    this._ro = new ResizeObserver(() => this._updateTicks());
+    this._ro.observe(this);
   }
   set(v) {
     if (this.integer) v = Math.round(v);
@@ -722,6 +732,23 @@ export class Slider extends OmarchyElement {
     this.value = v;
     this.emit("input", { value: v });
     this.emit("change", { value: v });
+  }
+  _updateTicks() {
+    const ticks = this.$(".ticks");
+    if (!ticks || !ticks.childElementCount) return;
+    const v = this._live === null || this._live === undefined ? this.value : this._live;
+    const range = Math.max(0.0001, this.max - this.min);
+    const p = Math.max(0, Math.min(1, (v - this.min) / range));
+    const w = this.clientWidth;
+    if (!(w > 0)) return;
+    const k = parseFloat(getComputedStyle(this).getPropertyValue("--knob")) || 14;
+    const tw = Math.max(0, w - k);
+    const knobCx = k / 2 + tw * p;
+    const n = this.ticks;
+    [...ticks.children].forEach((el, i) => {
+      const cx = k / 2 + tw * ((i + 1) / (n - 1));
+      el.style.display = Math.abs(cx - knobCx) > k / 2 ? "" : "none";
+    });
   }
   update() {
     const v = this._live === null || this._live === undefined ? this.value : this._live;
@@ -733,6 +760,7 @@ export class Slider extends OmarchyElement {
     if (ticks.childElementCount !== count) {
       ticks.innerHTML = Array.from({ length: count }, (_, i) => `<div class="tick" style="--f: ${(i + 1) / (this.ticks - 1)}"></div>`).join("");
     }
+    this._updateTicks();
     this.$(".knob").classList.toggle("hot", !!this._hot || !!this._focused || this.cursor || this._live !== null);
     this.setAttribute("aria-valuenow", String(v));
     this.setAttribute("aria-valuemin", String(this.min));

@@ -208,7 +208,7 @@ export const DIALOG_CSS = `
 .lines { display: flex; flex-direction: column; gap: ${space(10)}; }
 .buttons { display: flex; justify-content: flex-end; gap: ${space(10)}; margin-top: ${space(20)}; }
 .btn {
-  width: ${space(88)}; height: ${space(34)}; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+  min-width: ${space(88)}; height: ${space(34)}; padding-inline: var(--omarchy-space-control-padding-x); box-sizing: border-box; display: flex; align-items: center; justify-content: center;
   border: var(--omarchy-control-normal-border-top) solid ${alpha("var(--omarchy-foreground)", 0.38)};
   border-radius: var(--omarchy-radius);
   background: transparent; color: var(--omarchy-foreground); cursor: pointer;
