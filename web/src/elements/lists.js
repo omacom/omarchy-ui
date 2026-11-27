@@ -4,7 +4,7 @@
 // Badge.qml, StatusDot.qml, Avatar.qml, TileGrid.qml.
 
 import { OmarchyElement, esc } from "./base.js";
-import { alpha, fitGlyph, space, trackPointer } from "./looks.js";
+import { alpha, centerGlyph, fitGlyph, space, trackPointer } from "./looks.js";
 import { omarchyApi } from "../runtime.js";
 
 const TONES = ["accent", "success", "warning", "urgent", "muted"];
@@ -326,7 +326,7 @@ export class ListRow extends OmarchyElement {
 .value { font-size: var(--omarchy-font-body-small); line-height: var(--omarchy-line-body-small, normal); color: var(--omarchy-text-dim); white-space: pre; }
 .value:empty { display: none; }
 ::slotted([slot="trailing"]) { flex: none; }
-.slot { position: relative; flex: none; width: ${space(22)}; height: ${space(22)}; display: flex; align-items: center; justify-content: center; border-radius: var(--omarchy-radius); }
+.slot { position: relative; flex: none; width: ${space(22)}; height: ${space(22)}; display: flex; align-items: center; justify-content: center; border-radius: var(--omarchy-radius-small); }
 .slot.none { display: none; }
 .slot.has-action { cursor: pointer; }
 .slot.cur { background: ${alpha("var(--ink)", "var(--omarchy-control-hover-fill-alpha)")}; }
@@ -764,6 +764,13 @@ omarchy-status-dot.show { display: inline-block; }
     const mark = this.$(".mark");
     mark.textContent = this.glyph || this.initial;
     mark.classList.toggle("bold", !this.glyph);
+    if (this.glyph) centerGlyph(mark);
+    else {
+      mark.style.width = "";
+      mark.style.position = "";
+      mark.style.left = "";
+      mark.style.top = "";
+    }
 
     const dot = this.$("omarchy-status-dot");
     dot.classList.toggle("show", !!this.status);

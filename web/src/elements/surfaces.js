@@ -210,6 +210,7 @@ export const DIALOG_CSS = `
 .btn {
   width: ${space(88)}; height: ${space(34)}; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
   border: var(--omarchy-control-normal-border-top) solid ${alpha("var(--omarchy-foreground)", 0.38)};
+  border-radius: var(--omarchy-radius);
   background: transparent; color: var(--omarchy-foreground); cursor: pointer;
   font-size: var(--omarchy-font-caption); line-height: var(--omarchy-line-caption, normal); white-space: pre; user-select: none; -webkit-user-select: none;
 }
@@ -292,7 +293,6 @@ export class ConfirmDialog extends Dialog {
 .scrim { background: ${alpha("var(--omarchy-background)", 0.7)}; }
 .message { font-size: var(--omarchy-font-title); line-height: var(--omarchy-line-title, normal); }
 .buttons { margin-top: ${space(20)}; }
-.btn { border-radius: 0; }
 `;
   get destructive() {
     return true;

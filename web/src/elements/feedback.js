@@ -6,6 +6,7 @@
 
 import { OmarchyElement, surfaceBorder } from "./base.js";
 import { alpha, darker, fitGlyph, space } from "./looks.js";
+import { omarchyApi } from "../runtime.js";
 
 /** A tone's color (spec: neutral foreground, info accent, success, warning, error urgent). */
 const TONES = {
@@ -17,7 +18,11 @@ const TONES = {
 };
 
 // Under reduced motion every animation here holds still (stills never catch a frame of one).
-const STILL = ":host-context(:root[data-omarchy-reduce-motion])";
+// Driven by a host attribute rather than :host-context() so WebKitGTK (Tauri) matches Chromium.
+const STILL = ":host([data-still])";
+const isStill = () =>
+  !!(omarchyApi().tokens && omarchyApi().tokens.reduceMotion) ||
+  (typeof document !== "undefined" && document.documentElement.hasAttribute("data-omarchy-reduce-motion"));
 
 // ---------------------------------------------------------------------------------------------
 // Meter: a determinate level on a track, optional markers and a label / value header.
@@ -83,6 +88,7 @@ ${STILL} .segment { animation: none; }
     this.setAttribute("role", "progressbar");
   }
   update() {
+    this.toggleAttribute("data-still", isStill());
     const tone = this.alarming ? "error" : this.getAttribute("tone") || this.constructor.defaultTone;
     this.style.setProperty("--fill-color", this.alarming ? "var(--omarchy-urgent)" : TONES[tone] || TONES.neutral);
     const f = Math.max(0, Math.min(1, Number(this.value) || 0));
@@ -142,10 +148,9 @@ export class Spinner extends OmarchyElement {
   position: absolute; top: 0; left: var(--x, 0px);
   font-size: var(--px); line-height: var(--box); white-space: pre; color: var(--ink, var(--omarchy-foreground));
 }
-:host([pulse]) .spin { animation: none; }
-:host([pulse]) .mark { opacity: 0.5; animation: breathe 840ms ease-in-out infinite; }
-:host([running="false"]) .spin, :host([running="false"]) .mark { animation: none; }
-${STILL} .spin, ${STILL} .mark { animation: none; }
+:host([pulse]) .spin { opacity: 0.5; animation: breathe 840ms ease-in-out infinite; }
+:host([running="false"]) .spin { animation: none; }
+${STILL} .spin { animation: none; }
 @keyframes turn { to { transform: rotate(360deg); } }
 @keyframes breathe { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 `;
@@ -155,6 +160,7 @@ ${STILL} .spin, ${STILL} .mark { animation: none; }
     this.setAttribute("aria-label", "Busy");
   }
   update() {
+    this.toggleAttribute("data-still", isStill());
     const mark = this.$(".mark");
     mark.textContent = this.glyph;
     const s = String(this.size || "icon");
@@ -169,6 +175,7 @@ ${STILL} .spin, ${STILL} .mark { animation: none; }
     const size = parseFloat(cs.fontSize) || 14;
     const box = lineHeightOf(size, cs.fontFamily);
     this.style.setProperty("--box", `${box}px`);
+    fitGlyph(mark);
     if (canvas) {
       canvas.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
       const m = canvas.measureText(this.glyph);

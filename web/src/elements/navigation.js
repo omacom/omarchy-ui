@@ -662,7 +662,7 @@ export class Tabs extends Chooser {
 .row { position: relative; display: inline-flex; gap: var(--omarchy-space-xxs); }
 .tab {
   flex: none; padding: var(--omarchy-space-control-padding-y) var(--omarchy-space-control-padding-x);
-  border-radius: var(--omarchy-radius-small); cursor: pointer; user-select: none; -webkit-user-select: none;
+  border-radius: var(--omarchy-radius-small) var(--omarchy-radius-small) 0 0; cursor: pointer; user-select: none; -webkit-user-select: none;
   font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); white-space: pre;
   color: var(--omarchy-text-dim); transition: background-color var(--omarchy-motion-fast);
 }

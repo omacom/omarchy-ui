@@ -3,7 +3,7 @@
 // TextField, NumberField, Dropdown, PanelSlider): the same metrics, states, keys and strings.
 
 import { OmarchyElement, esc, optionIcon, optionLabel, optionValue, readingKey } from "./base.js";
-import { LOOK_CSS, alpha, clickOnKeys, darker, fitGlyph, reserve, space, trackPointer } from "./looks.js";
+import { LOOK_CSS, alpha, centerGlyph, clickOnKeys, fitGlyph, reserve, space, trackPointer } from "./looks.js";
 import { isOpen, place, popoverCss } from "./popup.js";
 import { omarchyApi } from "../runtime.js";
 
@@ -84,6 +84,7 @@ export class Button extends OmarchyElement {
 :host([left-align]) .box { justify-content: flex-start; }
 .box.down { transform: scale(0.97); }
 .icon { font-size: var(--omarchy-font-icon); line-height: var(--omarchy-line-icon, normal); white-space: pre; }
+.box.has-label .icon:not(:empty) { line-height: var(--omarchy-line-body, normal); height: var(--omarchy-line-body, auto); display: inline-flex; align-items: center; }
 .label { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); }
 :host([selected]) .box { color: var(--omarchy-control-selected-text); }
 :host([selected][foreground]) .box { color: var(--ink); }
@@ -103,6 +104,7 @@ export class Button extends OmarchyElement {
     this.$(".icon").textContent = this.icon;
     fitGlyph(this.$(".icon"));
     this.$(".label").textContent = this.text;
+    box.classList.toggle("has-label", this.text !== "");
     const hot = !!this._hot || this.cursor;
     const focus = !!this._focused;
     box.dataset.fill = this._pressed ? "pressed" : focus ? "focus" : hot ? "hover" : this.selected || this.active ? "selected" : "none";
@@ -143,7 +145,7 @@ export class IconButton extends OmarchyElement {
   cursor: pointer; outline: none; user-select: none; -webkit-user-select: none;
 }
 :host([disabled]) { pointer-events: none; cursor: default; }
-.box { flex: 1; display: flex; align-items: center; justify-content: center; transition: background-color 60ms; color: var(--ink, var(--omarchy-foreground)); }
+.box { flex: 1; display: flex; align-items: center; justify-content: center; border-radius: var(--omarchy-radius-small); transition: background-color 60ms; color: var(--ink, var(--omarchy-foreground)); }
 :host([disabled]) .box { color: var(--omarchy-text-faint); }
 .icon { font-size: var(--omarchy-font-icon); line-height: var(--omarchy-line-icon, normal); white-space: pre; }
 `;
@@ -158,7 +160,7 @@ export class IconButton extends OmarchyElement {
   update() {
     const box = this.$(".box");
     this.$(".icon").textContent = this.icon;
-    fitGlyph(this.$(".icon"));
+    centerGlyph(this.$(".icon"));
     const hot = (!!this._hot || this.cursor) && !this.disabled;
     const focus = !!this._focused;
     box.dataset.fill = focus ? "focus" : hot ? "hover" : "none";
@@ -260,7 +262,7 @@ export class ToggleSwitch extends OmarchyElement {
 .knob {
   position: absolute; top: calc((var(--th) - var(--knob)) / 2); left: var(--inset);
   width: var(--knob); height: var(--knob); border-radius: calc(var(--knob) / 2 * var(--omarchy-rounded));
-  background: ${darker("var(--ink, var(--omarchy-foreground))", 1.25)};
+  background: var(--omarchy-text-dim);
   transition: left var(--omarchy-motion-fast) cubic-bezier(0.33, 1, 0.68, 1), background-color var(--omarchy-motion-fast);
 }
 :host([checked]) .knob { left: calc(var(--tw) - var(--knob) - var(--inset)); background: var(--omarchy-control-selected-text); }
@@ -521,7 +523,7 @@ export class Dropdown extends OmarchyElement {
   padding: 0 var(--omarchy-space-control-gap) 0 var(--omarchy-space-control-padding-x); user-select: none; -webkit-user-select: none;
 }
 .value { flex: 1; min-width: 0; font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); white-space: pre; overflow: hidden; text-overflow: ellipsis; margin-right: var(--omarchy-space-md); }
-.chev { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); color: ${darker("var(--omarchy-popups-text)", 1.2)}; }
+.chev { font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); color: var(--omarchy-text-dim); }
 .pop {
   border-width: var(--omarchy-control-normal-border-width);
   padding: var(--omarchy-space-hairline);
@@ -726,10 +728,10 @@ export class Slider extends OmarchyElement {
     const range = Math.max(0.0001, this.max - this.min);
     const p = Math.max(0, Math.min(1, (v - this.min) / range));
     this.style.setProperty("--p", String(p));
-    const n = this.ticks > 1 ? this.ticks : 0;
+    const count = this.ticks > 2 ? this.ticks - 2 : 0;
     const ticks = this.$(".ticks");
-    if (ticks.childElementCount !== n) {
-      ticks.innerHTML = Array.from({ length: n }, (_, i) => `<div class="tick" style="--f: ${i / (n - 1)}"></div>`).join("");
+    if (ticks.childElementCount !== count) {
+      ticks.innerHTML = Array.from({ length: count }, (_, i) => `<div class="tick" style="--f: ${(i + 1) / (this.ticks - 1)}"></div>`).join("");
     }
     this.$(".knob").classList.toggle("hot", !!this._hot || !!this._focused || this.cursor || this._live !== null);
     this.setAttribute("aria-valuenow", String(v));

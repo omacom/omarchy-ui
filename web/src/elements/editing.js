@@ -460,7 +460,7 @@ export class Timeline extends OmarchyElement {
   font-size: var(--omarchy-font-body-small); line-height: var(--omarchy-line-body-small, normal); color: var(--omarchy-foreground);
 }
 .clabel > span { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
-.clip.sel .clabel { font-weight: bold; }
+.clip.sel .clabel { font-weight: bold; left: calc(${space(8)} + var(--omarchy-space-md)); right: calc(${space(8)} + var(--omarchy-space-md)); }
 .clip omarchy-trim-handle { position: absolute; top: 0; }
 .playhead { position: absolute; pointer-events: none; --ph: var(--omarchy-accent); }
 :host(.hot) .playhead { --ph: ${hotMix("var(--omarchy-accent)")}; }
@@ -766,13 +766,13 @@ export class ColorPicker extends OmarchyElement {
 }
 .knob.hot { transform: scale(1.15); }
 .field { display: flex; gap: var(--omarchy-space-md); align-items: center; }
-.preview { flex: none; box-sizing: border-box; border: 1px solid var(--omarchy-control-normal-border); border-radius: var(--omarchy-radius-small); }
+.preview { flex: none; box-sizing: border-box; border: 1px solid var(--omarchy-control-normal-border); border-radius: var(--omarchy-radius-small); background-clip: padding-box; }
 .field omarchy-text-field { flex: 1; min-width: 0; width: auto; }
 .palette { display: flex; gap: var(--omarchy-space-md); }
 .palette:empty { display: none; }
 .swatch {
   flex: none; width: ${space(20)}; height: ${space(20)}; box-sizing: border-box; border-radius: var(--omarchy-radius-small);
-  border: 1px solid var(--omarchy-control-normal-border); cursor: pointer; outline: none;
+  border: 1px solid var(--omarchy-control-normal-border); background-clip: padding-box; cursor: pointer; outline: none;
 }
 .swatch:hover, .swatch:focus { border-color: var(--omarchy-control-hover-border); }
 .swatch.chosen { border: var(--ring) solid var(--omarchy-foreground); }

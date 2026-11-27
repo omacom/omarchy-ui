@@ -31,6 +31,7 @@ export const LOOK_CSS = `
   border-color: var(--bc);
   border-width: var(--bt) var(--br) var(--bb) var(--bl);
   background-color: var(--fill);
+  background-clip: padding-box;
   border-radius: var(--omarchy-radius);
   transition: background-color var(--omarchy-motion-fast), border-color var(--omarchy-motion-fast);
 }
@@ -96,4 +97,39 @@ export function fitGlyph(span) {
   const m = glyphCanvas.measureText(text);
   const w = Math.max(m.width, m.actualBoundingBoxRight);
   if (w > m.width + 0.5) span.style.width = `${w}px`;
+}
+
+/**
+ * Optically center a single-glyph span in both X and Y by its tight ink bounds (matching Qt's
+ * PanelActionButton): expand width when ink overhangs the advance and offset by whole pixels so
+ * the ink center lands on the span box center.
+ */
+export function centerGlyph(span) {
+  if (!glyphCanvas || !span.isConnected) return;
+  span.style.width = "";
+  span.style.position = "";
+  span.style.left = "";
+  span.style.top = "";
+  const text = span.textContent;
+  if (!text) return;
+  const cs = getComputedStyle(span);
+  glyphCanvas.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const m = glyphCanvas.measureText(text);
+  const w = Math.max(m.width, m.actualBoundingBoxRight);
+  const boxW = w > m.width + 0.5 ? w : m.width;
+  if (w > m.width + 0.5) span.style.width = `${w}px`;
+  const inkW = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+  const inkH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+  if (!(inkW > 0 && inkH > 0)) return;
+  const inkCenterX = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
+  const dx = Math.round(boxW / 2 - inkCenterX);
+  const size = parseFloat(cs.fontSize) || 12;
+  const fontAscent = Number.isFinite(m.fontBoundingBoxAscent) ? m.fontBoundingBoxAscent : size * 0.8;
+  const fontDescent = Number.isFinite(m.fontBoundingBoxDescent) ? m.fontBoundingBoxDescent : size * 0.2;
+  const dy = Math.round(((m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) - (fontAscent - fontDescent)) / 2);
+  if (dx !== 0 || dy !== 0) {
+    span.style.position = "relative";
+    if (dx !== 0) span.style.left = `${dx}px`;
+    if (dy !== 0) span.style.top = `${dy}px`;
+  }
 }

@@ -15,10 +15,10 @@ export default {
 <style>
   .tk-flow { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--omarchy-space-lg); }
   .tk-swatch { display: flex; flex-direction: column; align-items: flex-start; gap: var(--omarchy-space-xs); }
-  .tk-swatch > div { width: 64px; height: 32px; box-sizing: border-box; border: 1px solid var(--omarchy-control-normal-border); border-radius: var(--omarchy-radius-small); }
+  .tk-swatch > div { width: 64px; height: 32px; box-sizing: border-box; border: 1px solid var(--omarchy-control-normal-border); border-radius: var(--omarchy-radius-small); background-clip: padding-box; }
   .tk-swatch > span { font-size: var(--omarchy-font-caption); line-height: var(--omarchy-line-caption, normal); }
   .tk-chip { width: 120px; height: var(--omarchy-space-control-height); box-sizing: border-box; display: flex; align-items: center; justify-content: center;
-    border-style: solid; border-radius: var(--omarchy-radius); font-size: var(--omarchy-font-body); }
+    border-style: solid; border-radius: var(--omarchy-radius); background-clip: padding-box; font-size: var(--omarchy-font-body); }
   .tk-scale { display: flex; flex-direction: column; align-items: flex-start; gap: var(--omarchy-space-xs); }
 </style>
 <div class="tk-flow fill">

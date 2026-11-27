@@ -550,6 +550,7 @@ export class Calendar extends OmarchyElement {
   outline: none; user-select: none; -webkit-user-select: none; vertical-align: top;
 }
 .head { position: relative; display: flex; align-items: center; justify-content: space-between; }
+.head-slot { width: var(--cw); display: flex; align-items: center; justify-content: center; flex: none; }
 .month { position: absolute; left: 0; right: 0; text-align: center; color: var(--omarchy-text-dim); white-space: pre;
   font-size: var(--omarchy-font-body); line-height: var(--omarchy-line-body, normal); pointer-events: none; }
 .grid { display: grid; grid-template-columns: repeat(7, var(--cw)); gap: var(--gap); }
@@ -565,7 +566,7 @@ export class Calendar extends OmarchyElement {
 .day.today { border: var(--omarchy-space-hairline) solid var(--omarchy-accent); font-weight: bold; }
 `;
   setup() {
-    this.shadowRoot.innerHTML = `<div class="head"><span class="month"></span><omarchy-icon-button class="prev" nofocus icon="\u{F0141}"></omarchy-icon-button><omarchy-icon-button class="next" nofocus icon="\u{F0142}"></omarchy-icon-button></div><div class="grid" role="grid"></div>`;
+    this.shadowRoot.innerHTML = `<div class="head"><span class="month"></span><div class="head-slot"><omarchy-icon-button class="prev" nofocus icon="\u{F0141}"></omarchy-icon-button></div><div class="head-slot"><omarchy-icon-button class="next" nofocus icon="\u{F0142}"></omarchy-icon-button></div></div><div class="grid" role="grid"></div>`;
     this.setAttribute("role", "group");
     const grid = this.$(".grid");
     followFocus(this, grid);
