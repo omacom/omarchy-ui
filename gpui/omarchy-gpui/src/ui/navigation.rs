@@ -137,41 +137,32 @@ pub(crate) fn optical(window: &Window, cx: &App, t: &Paint, s: &str, size: i64, 
     div().relative().flex_shrink_0().w(px(w)).h(px(h)).child(glyph)
 }
 
-/// Text centered optically in BOTH X and Y inside a `w` × `h` box, snapped to whole points, as
-/// Qt's `PanelActionButton` centers icon glyphs. Reads TrueType `glyf`/`hhea` bounds directly
-/// when available and falls back to the SVG raster bounds (CFF fonts, fallback Nerd Fonts).
+/// Text centered optically horizontally by ink bounds (snapped to whole points) and vertically on
+/// the line box, as Qt's `PanelActionButton` centers icon glyphs. Reads TrueType `glyf` bounds
+/// directly when available and falls back to the SVG raster bounds (CFF fonts, fallback Nerd
+/// Fonts).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn optical_xy(window: &Window, cx: &App, t: &Paint, s: &str, size: i64, ink: Hsla, hot: Option<Hsla>, w: f32, h: f32) -> Div {
     let k = size as f32;
-    let exact = t.exact_line(size);
+    let line = t.tokens().font.line_px(size) as f32;
+    let y = ((h - line) / 2.0).round();
     let single = {
         let mut chars = s.chars();
         chars.next().filter(|_| chars.next().is_none())
     };
-    let (x, y) = if let (Some(ch), Some(file)) = (single, t.tokens().font.file.as_deref())
+    let x = if let (Some(ch), Some(file)) = (single, t.tokens().font.file.as_deref())
         && let Some(g) = super::ink::ink(file, ch)
         && g.x_max > g.x_min
         && g.y_max > g.y_min
     {
         let ix = g.x_min * k;
         let iw = (g.x_max - g.x_min) * k;
-        let baseline = (exact + (g.ascent + g.descent) * k) / 2.0;
-        let center_y = baseline - (g.y_min + g.y_max) / 2.0 * k;
-        ((w / 2.0 - (ix + iw / 2.0)).round(), (h / 2.0 - center_y).round())
-    } else if let Some((ix, iw, iy, ih)) = ink_rect(cx, t, s, size, false) {
-        let baseline = t
-            .tokens()
-            .font
-            .file
-            .as_deref()
-            .and_then(super::ink::font_vmetrics)
-            .map(|(asc, desc)| (exact + (asc + desc) * k) / 2.0)
-            .unwrap_or(exact * 0.78);
-        ((w / 2.0 - (ix + iw / 2.0)).round(), (h / 2.0 - (baseline + iy + ih / 2.0)).round())
+        (w / 2.0 - (ix + iw / 2.0)).round()
+    } else if let Some((ix, iw, _, _)) = ink_rect(cx, t, s, size, false) {
+        (w / 2.0 - (ix + iw / 2.0)).round()
     } else {
         let adv = advance(window, t, s, size, false);
-        let line = t.tokens().font.line_px(size) as f32;
-        (((w - adv) / 2.0).round(), ((h - line) / 2.0).round())
+        ((w - adv) / 2.0).round()
     };
     let mut glyph = label(t, s.to_string(), size, false, ink).absolute().left(px(x)).top(px(y));
     if let Some(c) = hot {
@@ -583,7 +574,10 @@ impl RenderOnce for Tabs {
         let r = t.radius_small();
         let selected_ink = color(tk.controls.selected.text);
         let n = self.labels.len();
-        let mut row = div().flex().flex_row().gap(px(sp.xxs as f32));
+        let gap = sp.xxs as f32;
+        let mut cursor_x = 0.0f32;
+        let mut underline: Option<(f32, f32)> = None;
+        let mut row = div().flex().flex_row().gap(px(gap));
         for (i, text) in self.labels.into_iter().enumerate() {
             let selected = i == self.current;
             let forced = self.cursor == Some(i) || (focused && selected);
@@ -596,6 +590,10 @@ impl RenderOnce for Tabs {
             };
             // Qt sizes the tab to the label's whole-pixel width and centers the label in it.
             let width = advance(window, &t, &text, tk.font.body, selected).ceil() + (sp.control_padding_x * 2) as f32;
+            if selected {
+                underline = Some((cursor_x, width));
+            }
+            cursor_x += width + gap;
             let selector = format!("tab-{text}");
             let base = div()
                 .id(ElementId::NamedChild(Arc::new(self.id.clone()), format!("tab-{i}").into()))
@@ -625,9 +623,6 @@ impl RenderOnce for Tabs {
                 .rounded_t(r)
                 .group_active(GROUP, move |s| s.bg(pressed_fill));
             let mut tab = base.child(hover_layer).child(pressed_layer).child(word);
-            if selected {
-                tab = tab.child(div().absolute().left_0().right_0().bottom_0().h(px(sp.xxs as f32)).bg(t.accent()));
-            }
             let (f, focus) = (self.on_choose.clone(), focus.clone());
             let current = self.current;
             tab = tab.on_click(move |_, window, cx| {
@@ -641,7 +636,7 @@ impl RenderOnce for Tabs {
             row = row.child(tab);
         }
         let (f, current) = (self.on_choose, self.current);
-        div()
+        let mut out = div()
             .id(self.id)
             .relative()
             .w_full()
@@ -659,8 +654,12 @@ impl RenderOnce for Tabs {
                 }
                 cx.stop_propagation();
             })
-            .child(div().absolute().left_0().right_0().bottom_0().h(px(1.0)).bg(t.track()))
             .child(row)
+            .child(div().absolute().left_0().right_0().bottom_0().h(px(1.0)).bg(t.track()));
+        if let Some((ux, uw)) = underline {
+            out = out.child(div().absolute().left(px(ux)).bottom_0().w(px(uw)).h(px(sp.xxs as f32)).bg(t.accent()));
+        }
+        out
     }
 }
 
@@ -1092,13 +1091,33 @@ fn menu_row(
     kids.push(div().flex_1().into_any_element());
     if let Some(hint) = item.shortcut {
         let ink = if enabled { t.dim() } else { t.faint() };
-        kids.push(label(t, hint, tk.font.body_small, false, ink).ml(px(sp.huge as f32)).into_any_element());
+        let font_id = cx.text_system().resolve_font(&font_for(t, false));
+        let baseline_y = |size: i64| {
+            let fs = px(size as f32);
+            let asc = f32::from(cx.text_system().ascent(font_id, fs));
+            let desc = f32::from(cx.text_system().descent(font_id, fs)).abs();
+            let line = tk.font.line_px(size) as f32;
+            (h - line) / 2.0 + (t.exact_line(size) + asc - desc) / 2.0
+        };
+        let dy = baseline_y(tk.font.body) - baseline_y(tk.font.body_small);
+        kids.push(label(t, hint, tk.font.body_small, false, ink).relative().top(px(dy)).ml(px(sp.huge as f32)).into_any_element());
     }
     if reserve_mark {
         let mark = if item.checkable && item.checked {
             let ink = if enabled { t.accent() } else { t.faint() };
-            let (glyph, size) = if item.exclusive { ("\u{25cf}", tk.font.caption) } else { ("\u{2713}", tk.font.body) };
-            optical(window, cx, t, glyph, size, ink, None, icon_box, h)
+            if item.exclusive {
+                let dot = t.space(6.0);
+                div()
+                    .flex()
+                    .flex_shrink_0()
+                    .items_center()
+                    .justify_center()
+                    .w(px(icon_box))
+                    .h(px(h))
+                    .child(div().size(px(dot)).rounded(px(dot / 2.0)).bg(ink))
+            } else {
+                optical(window, cx, t, "\u{2713}", tk.font.body, ink, None, icon_box, h)
+            }
         } else if item.has_submenu {
             let ink = if enabled { t.dim() } else { t.faint() };
             optical(window, cx, t, "\u{f054}", tk.font.icon_small, ink, None, icon_box, h)

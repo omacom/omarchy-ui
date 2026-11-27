@@ -7,7 +7,7 @@ use gpui::prelude::*;
 use gpui::{App, KeyDownEvent, MouseButton, SharedString, Window, div, px};
 
 use super::{Walk, row_fill, row_ink, walk_key};
-use crate::ui::{Handler, focus_handle, keyed_state, label, label_elided, tab_keys};
+use crate::ui::{Handler, focus_handle, keyed_state, label_elided, tab_keys};
 use crate::{Paint, color};
 
 /// One node: an id the app knows it by, a label, an optional glyph, and children.
@@ -112,7 +112,8 @@ impl RenderOnce for Tree {
         let t = Paint::of(cx);
         let tk = t.tokens();
         let sp = &tk.spacing;
-        let h = px(sp.popup_row_height as f32);
+        let row_h = sp.popup_row_height as f32;
+        let h = px(row_h);
         let slot = sp.xxxl as f32;
         let icon = tk.font.icon;
         let id: gpui::ElementId = self.id.clone().into();
@@ -144,7 +145,8 @@ impl RenderOnce for Tree {
                 .items_center()
                 .justify_center();
             if v.branch {
-                chevron = chevron.child(label(&t, if v.open { "\u{f0140}" } else { "\u{f0142}" }, tk.font.icon_small, false, t.dim()));
+                let chev = if v.open { "\u{f0140}" } else { "\u{f0142}" };
+                chevron = chevron.child(crate::ui::navigation::optical(window, cx, &t, chev, tk.font.icon_small, t.dim(), None, slot, row_h));
                 let selector = format!("{}-{}-toggle", self.id, n.id);
                 chevron = chevron.debug_selector(|| selector).cursor_pointer();
                 if let Some(f) = self.on_toggle.clone() {
@@ -167,7 +169,9 @@ impl RenderOnce for Tree {
                 .child(div().w(px(sp.sm as f32)).flex_shrink_0());
             if let Some(g) = &n.glyph {
                 let gi = if is_selected { color(tk.controls.selected.text) } else { t.dim() };
-                line = line.child(div().flex().flex_row().flex_shrink_0().w(px((icon + sp.md) as f32)).h_full().items_center().child(label(&t, g.clone(), icon, false, gi)));
+                line = line
+                    .child(crate::ui::navigation::optical(window, cx, &t, g, icon, gi, None, icon as f32, row_h))
+                    .child(div().w(px(sp.md as f32)).flex_shrink_0());
             }
             line = line.child(label_elided(&t, n.label.clone(), tk.font.body, is_selected, ink).flex_1());
 

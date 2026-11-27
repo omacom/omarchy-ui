@@ -530,6 +530,9 @@ impl RenderOnce for Banner {
         let tone = if self.tone == FeedbackTone::Neutral { FeedbackTone::Info } else { self.tone };
         let ink = tone.color(&t);
         let line = tk.controls.normal.border.max_width().max(1.0) as f32;
+        let btn_border = tk.controls.normal.border.max_width().max(tk.controls.hover.border.max_width()) as f32;
+        let btn_min_h = tk.font.line_px(tk.font.body) as f32 + (sp.control_padding_y as f32 + btn_border) * 2.0;
+        let inner_min_h = (sp.control_height as f32).max(btn_min_h);
         let trailing = !self.action.is_empty() || self.dismissible;
         let mark = self.glyph.unwrap_or_else(|| tone.glyph().into());
         let child_id = |name: &str| ElementId::NamedChild(std::sync::Arc::new(self.id.clone()), name.to_string().into());
@@ -540,7 +543,7 @@ impl RenderOnce for Banner {
             .w_full()
             .items_center()
             .gap(px(sp.control_gap as f32))
-            .min_h(px(sp.control_height as f32 + (sp.sm as f32 + line) * 2.0))
+            .min_h(px(inner_min_h + (sp.sm as f32 + line) * 2.0))
             .pl(px(sp.control_padding_x as f32))
             .pr(px(if trailing { sp.sm } else { sp.control_padding_x } as f32))
             .py(px(sp.sm as f32))
@@ -653,7 +656,7 @@ impl RenderOnce for Toast {
             .gap(px(t.space(3.0)))
             .child(label(&t, self.title, tk.font.body, true, ink));
         if !self.text.is_empty() {
-            words = words.child(paragraph(&t, self.text, tk.font.body, color(s.base.text.darker(1.15))));
+            words = words.child(paragraph(&t, self.text, tk.font.body, color(s.base.text.with_alpha(0.78))));
         }
         let mut content = div().relative().flex().flex_row().w_full().items_center().gap(px(t.space(12.0)));
         if !self.glyph.is_empty() {
@@ -670,24 +673,37 @@ impl RenderOnce for Toast {
         }
 
         // The border spec is drawn by the box itself, so the padding is inside it.
+        // Center the content in the height above the countdown bar when present.
+        let pad_x = t.space(12.0);
+        let pad_y = t.space(10.0);
+        let line = t.space(2.0).max(1.0);
+        let (pt, pb) = if self.countdown.is_some() {
+            let shift = (line / 2.0).round();
+            ((pad_y - shift).max(0.0), pad_y + shift)
+        } else {
+            (pad_y, pad_y)
+        };
         let mut e = div()
             .relative()
             .flex()
             .flex_col()
+            .justify_center()
             .flex_shrink_0()
-            .px(px(t.space(12.0)))
-            .py(px(t.space(10.0)))
+            .px(px(pad_x))
+            .pt(px(pt))
+            .pb(px(pb))
             .bg(color(s.base.background))
             .rounded(t.radius())
             .w(px(self.width.unwrap_or_else(|| t.space(360.0))));
         e = border(e, &s.base.border);
         if self.cursor {
-            e = e.child(div().absolute().top_0().left_0().size_full().bg(color(tk.controls.hover.fill)));
+            let bw = s.base.border.widths[3].max(s.base.border.widths[0]) as f32;
+            let inner_r = (tk.radius as f32 - bw).max(0.0);
+            e = e.child(div().absolute().top_0().left_0().size_full().rounded(px(inner_r)).bg(color(tk.controls.hover.fill)));
         }
         e = e.child(content);
         if let Some(left) = self.countdown {
             let r = tk.radius as f32;
-            let line = t.space(2.0).max(1.0);
             e = e.child(
                 div()
                     .absolute()

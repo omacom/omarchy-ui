@@ -14,7 +14,7 @@ use gpui::{
 };
 use omarchy_theme::{BorderSpec, Rgba, Tokens};
 
-use super::{Tone, glyph};
+use super::Tone;
 use crate::ui::{Handler, border, id_for, label};
 use crate::{Paint, color};
 
@@ -292,7 +292,7 @@ impl RenderOnce for Avatar {
                 .bg(color(tk.controls.selected.fill));
             let mark = (size * 0.5).round() as i64;
             if !self.glyph.is_empty() {
-                tile.child(glyph(&t, window, self.glyph, mark, t.fg())).into_any_element()
+                tile.child(crate::ui::navigation::optical(window, cx, &t, &self.glyph, mark, t.fg(), None, size, size)).into_any_element()
             } else {
                 tile.child(label(&t, Avatar::initial(&self.name), mark, true, t.fg())).into_any_element()
             }
@@ -406,6 +406,7 @@ impl RenderOnce for TileGrid {
         let f = &tk.font;
         let w = self.cell_width.unwrap_or_else(|| t.space(88.0));
         let pad = tk.spacing.md as f32;
+        let inner_w = (w - pad * 2.0).max(0.0);
         let icon_h = (tk.font.line_px(f.display) as f32).max(AvatarSize::Medium.px(tk));
         let gap = tk.spacing.md as f32;
         let label_h = tk.font.line_px(f.body_small) as f32 * 2.0;
@@ -423,11 +424,10 @@ impl RenderOnce for TileGrid {
             };
             let icon: AnyElement = match tile.avatar {
                 Some(a) => a.size(AvatarSize::Medium).into_any_element(),
-                None => glyph(&t, window, tile.glyph, f.display, t.fg()).into_any_element(),
+                None => crate::ui::navigation::optical(window, cx, &t, &tile.glyph, f.display, t.fg(), None, inner_w, icon_h).into_any_element(),
             };
             let words = div()
-                .w(px(w - pad * 2.0))
-                .mt(px(gap))
+                .w(px(inner_w))
                 .font_family(t.family())
                 .text_size(px(f.body_small as f32))
                 .line_height(t.line(f.body_small))
@@ -436,6 +436,14 @@ impl RenderOnce for TileGrid {
                 .line_clamp(2)
                 .text_ellipsis()
                 .child(tile.label);
+            let content = div()
+                .flex()
+                .flex_col()
+                .items_center()
+                .w(px(inner_w))
+                .gap(px(gap))
+                .child(div().flex().items_center().justify_center().w(px(inner_w)).h(px(icon_h)).child(icon))
+                .child(words);
             let tile_id = ElementId::NamedInteger(format!("{}", self.id).into(), i as u64);
             let selector = tile_id.clone();
             let mut e = div()
@@ -446,13 +454,12 @@ impl RenderOnce for TileGrid {
                 .flex_col()
                 .flex_shrink_0()
                 .items_center()
+                .justify_center()
                 .w(px(w))
                 .h(px(h))
-                .pt(px(pad))
                 .rounded(t.radius())
                 .bg(color(fill))
-                .child(div().flex().items_center().h(px(icon_h)).child(icon))
-                .child(words);
+                .child(content);
             if !edge.is_none() {
                 e = e.child(border(div().absolute().top_0().left_0().size_full().rounded(t.radius()), &edge));
             }

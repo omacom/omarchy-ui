@@ -116,6 +116,17 @@ impl RenderOnce for Button {
         let [rt, rr, rb, rl] = reserve(&looks);
 
         let ink = if self.selected { color(c.selected.text) } else { t.fg() };
+        let mut content_w = 0.0f32;
+        if let Some(icon) = &self.icon {
+            content_w += super::lists::glyph_width(&t, window, icon, tk.font.icon);
+            if !self.label.is_empty() {
+                content_w += sp.control_gap as f32;
+            }
+        }
+        if !self.label.is_empty() {
+            content_w += super::navigation::advance(window, &t, &self.label, tk.font.body, self.selected);
+        }
+        let min_w = content_w.ceil() + (sp.control_padding_x * 2) as f32 + rl + rr;
         let base = div()
             .id(self.id)
             .flex()
@@ -123,6 +134,7 @@ impl RenderOnce for Button {
             .flex_shrink_0()
             .items_center()
             .justify_center()
+            .min_w(px(min_w))
             .gap(px(sp.control_gap as f32))
             .pt(px(sp.control_padding_y as f32 + rt))
             .pb(px(sp.control_padding_y as f32 + rb))

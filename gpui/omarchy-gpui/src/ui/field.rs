@@ -25,10 +25,6 @@ fn rest_and_hot(t: &Paint) -> (Look, Look) {
     (Look::new(c.normal.fill, c.normal.border.clone()), Look::new(c.hover.fill, c.hover.border.clone()))
 }
 
-fn field_label(t: &Paint, text: SharedString, bold: bool) -> gpui::Div {
-    label(t, text, t.tokens().font.body_small, bold, t.dim())
-}
-
 // ------------------------------------------------------------------------------- TextInput
 
 /// The editing behind a [`TextField`]: one line of text, a caret and a selection, IME, the
@@ -690,6 +686,7 @@ impl RenderOnce for NumberField {
         let (value, from, to, step) = (self.value, self.from, self.to, self.step);
         let hover = color(c.hover.fill);
         let pressed = color(c.pressed.fill);
+        let step_r = px((tk.radius as f32 - inset).max(0.0));
         let step_button = |glyph: &'static str, target: i64, enabled: bool| {
             let mut b = div()
                 .id(glyph)
@@ -698,7 +695,7 @@ impl RenderOnce for NumberField {
                 .items_center()
                 .justify_center()
                 .size(px(side))
-                .rounded(t.radius_small())
+                .rounded(step_r)
                 .when(enabled, |b| b.hover(move |s| s.bg(hover)).active(move |s| s.bg(pressed)))
                 .opacity(if enabled { 1.0 } else { 0.4 })
                 .child(label(&t, glyph, tk.font.body, false, t.fg()));
@@ -720,9 +717,17 @@ impl RenderOnce for NumberField {
             .justify_between()
             .px(px(inset));
         let keys = self.on_change.clone();
+        let value_box = div()
+            .flex()
+            .flex_1()
+            .min_w_0()
+            .px(px(sp.sm as f32))
+            .justify_center()
+            .overflow_hidden()
+            .child(label(&t, value.to_string(), tk.font.body, false, t.fg()));
         let field = chrome(base, &t, &rest, &hot, self.cursor || focus.is_focused(window), t.radius())
             .child(down)
-            .child(label(&t, value.to_string(), tk.font.body, false, t.fg()))
+            .child(value_box)
             .child(up)
             .track_focus(&focus)
             .on_key_down(move |ev: &KeyDownEvent, window, cx| {
@@ -744,9 +749,9 @@ impl RenderOnce for NumberField {
                 }
                 cx.stop_propagation();
             });
-        let mut out = div().flex().flex_col().flex_shrink_0().gap(px(sp.md as f32));
+        let mut out = div().flex().flex_col().flex_shrink_0().gap(px(sp.label_gap as f32));
         if !self.label.is_empty() {
-            out = out.child(field_label(&t, self.label, false));
+            out = out.child(label(&t, self.label, tk.font.caption, true, t.dim()));
         }
         out.child(field)
     }
@@ -916,7 +921,9 @@ impl RenderOnce for Dropdown {
                 .rounded(t.radius());
             list = border(list, &pop.border.with_width(line as f64));
             for (i, (value, text)) in self.options.into_iter().enumerate() {
-                let mut row = MenuRow::new(text).id(ElementId::NamedChild(std::sync::Arc::new(self.id.clone()), value.to_string().into()));
+                let mut row = MenuRow::new(text)
+                    .id(ElementId::NamedChild(std::sync::Arc::new(self.id.clone()), value.to_string().into()))
+                    .small_radius(true);
                 row = row.checked(value == self.value).highlighted(highlight == Some(i));
                 let st = state.clone();
                 let f = self.on_choose.clone();

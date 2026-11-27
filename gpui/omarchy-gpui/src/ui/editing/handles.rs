@@ -65,14 +65,22 @@ impl Edge {
     }
 }
 
-/// A piece of a part in `rest`, swapped for `hot` under the pointer (or always when `forced`).
-fn piece(x: f32, y: f32, w: f32, h: f32, r: f32, rest: Hsla, hot: Hsla, forced: bool) -> Div {
-    let base = div().absolute().left(px(x)).top(px(y)).w(px(w)).h(px(h)).rounded(px(r));
+/// A piece of a part in `rest`, swapped for `hot` under the pointer (or always when `forced`),
+/// with per-corner radii `[tl, tr, br, bl]`.
+fn piece_radii(x: f32, y: f32, w: f32, h: f32, r: [f32; 4], rest: Hsla, hot: Hsla, forced: bool) -> Div {
+    let corners = |d: Div| d.rounded_tl(px(r[0])).rounded_tr(px(r[1])).rounded_br(px(r[2])).rounded_bl(px(r[3]));
+    let base = corners(div().absolute().left(px(x)).top(px(y)).w(px(w)).h(px(h)));
     if forced {
         base.bg(hot)
     } else {
-        base.bg(rest).child(div().absolute().top_0().left_0().size_full().rounded(px(r)).bg(hot).opacity(0.0).group_hover(HOT, |s| s.opacity(1.0)))
+        base.bg(rest)
+            .child(corners(div().absolute().top_0().left_0().size_full()).bg(hot).opacity(0.0).group_hover(HOT, |s| s.opacity(1.0)))
     }
+}
+
+/// A piece of a part in `rest`, swapped for `hot` under the pointer (or always when `forced`).
+fn piece(x: f32, y: f32, w: f32, h: f32, r: f32, rest: Hsla, hot: Hsla, forced: bool) -> Div {
+    piece_radii(x, y, w, h, [r; 4], rest, hot, forced)
 }
 
 /// A draggable in/out handle: a trim cap on a clip's left or right end, or (with `crop`) one of
@@ -196,15 +204,27 @@ impl RenderOnce for TrimHandle {
             let thick = t.space(4.0);
             let r = small.min(thick / 2.0);
             let edge = self.edge;
+            let r1 = [
+                if matches!(edge, Edge::Bottom | Edge::Right | Edge::BottomRight) { r } else { 0.0 },
+                if matches!(edge, Edge::Bottom | Edge::Left | Edge::BottomLeft) { r } else { 0.0 },
+                if matches!(edge, Edge::Top | Edge::Left | Edge::TopLeft) { r } else { 0.0 },
+                if matches!(edge, Edge::Top | Edge::Right | Edge::TopRight) { r } else { 0.0 },
+            ];
             if edge.is_corner() || matches!(edge, Edge::Top | Edge::Bottom) {
                 let y = if edge.is_corner() && edge.is_bottom() { h - thick } else { 0.0 };
-                e = e.child(piece(0.0, y, w, thick, r, rest, ink, hot));
+                e = e.child(piece_radii(0.0, y, w, thick, r1, rest, ink, hot));
             } else {
-                e = e.child(piece(0.0, 0.0, thick, h, r, rest, ink, hot));
+                e = e.child(piece_radii(0.0, 0.0, thick, h, r1, rest, ink, hot));
             }
             if edge.is_corner() {
                 let x = if edge.is_right() { w - thick } else { 0.0 };
-                e = e.child(piece(x, 0.0, thick, h, r, rest, ink, hot));
+                let r2 = [
+                    if edge == Edge::BottomRight { r } else { 0.0 },
+                    if edge == Edge::BottomLeft { r } else { 0.0 },
+                    if edge == Edge::TopLeft { r } else { 0.0 },
+                    if edge == Edge::TopRight { r } else { 0.0 },
+                ];
+                e = e.child(piece_radii(x, 0.0, thick, h, r2, rest, ink, hot));
             }
         }
         let (crop, edge) = (self.crop, self.edge);
@@ -375,8 +395,8 @@ impl RenderOnce for DragHandle {
         let dot = t.space(3.0);
         let gap = t.space(3.0);
         let r = (t.tokens().radius_small() as f32).min(dot / 2.0);
-        let x0 = ((w - (dot * 2.0 + gap)) / 2.0).round();
-        let y0 = ((h - (dot * 3.0 + gap * 2.0)) / 2.0).round();
+        let x0 = (w - (dot * 2.0 + gap)) / 2.0;
+        let y0 = (h - (dot * 3.0 + gap * 2.0)) / 2.0;
         let focus = focus_handle(&self.id, window, cx);
         let held = dragging(&self.id, window, cx);
         let hot = self.cursor || held || focus.is_focused(window);

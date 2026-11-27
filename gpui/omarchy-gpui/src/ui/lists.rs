@@ -49,6 +49,26 @@ impl Tone {
     }
 }
 
+/// Natural width of [`glyph`] (advance plus any overhanging ink).
+pub(crate) fn glyph_width(t: &Paint, window: &mut Window, s: &str, size: i64) -> f32 {
+    let font_size = px(size as f32);
+    let run = TextRun { len: s.len(), font: gpui::font(t.family()), color: t.fg(), background_color: None, underline: None, strikethrough: None };
+    let advance = f32::from(window.text_system().layout_line(s, font_size, &[run], None).width);
+    let (mut lo, mut hi) = (0.0f32, advance);
+    if let Some(file) = t.tokens().font.file.as_deref() {
+        let mut x = 0.0f32;
+        for ch in s.chars() {
+            let Some(g) = super::ink::ink(file, ch) else { continue };
+            lo = lo.min(x + g.x_min * size as f32);
+            hi = hi.max(x + g.x_max * size as f32);
+            x += g.advance * size as f32;
+        }
+    }
+    let left = (-lo).max(0.0).ceil();
+    let right = (hi - advance).max(0.0).ceil();
+    advance + left + right
+}
+
 /// A glyph boxed the way Qt's `Text` boxes one: the advance, widened by any ink that overhangs
 /// it, in whole pixels. Nerd Font icons in the non-Mono Nerd Fonts overhang their cell to the
 /// right, so centering the bare advance (as GPUI lays text out) leaves the icon right of center.
@@ -269,7 +289,9 @@ impl RenderOnce for ListRow {
             (Some(e), _) => Some(e),
             (None, false) => {
                 let g = self.glyph_color.filter(|_| !self.disabled).unwrap_or(ink);
-                Some(glyph(&t, window, self.glyph.clone(), f.title, color(g)).into_any_element())
+                let lw = lead_width(&tk);
+                let lh = lw.max((f.title as f32 * 1.35).ceil());
+                Some(super::navigation::optical(window, cx, &t, &self.glyph, f.title, color(g), None, lw, lh).into_any_element())
             }
             (None, true) => None,
         };
@@ -306,7 +328,8 @@ impl RenderOnce for ListRow {
         }
         let has_action = !self.action.is_empty();
         if has_action || !self.trailing_glyph.is_empty() {
-            let side = px(t.space(22.0));
+            let side_f = t.space(22.0);
+            let side = px(side_f);
             let shown = has_action && !self.disabled && (self.cursor || self.action_cursor);
             let live = has_action && !self.disabled;
             let slot_id = ElementId::NamedChild(std::sync::Arc::new(self.id.clone()), "action".into());
@@ -328,16 +351,25 @@ impl RenderOnce for ListRow {
                 );
                 slot = slot.child(super::layer(&look, t.radius_small()));
             }
-            let center = || div().absolute().top_0().left_0().size_full().flex().items_center().justify_center();
             if !self.trailing_glyph.is_empty() {
                 let tint = if self.disabled { faint } else { self.trailing_tone.rgba(&tk, tk.roles.text_dim) };
-                let mark = center().child(glyph(&t, window, self.trailing_glyph, f.subtitle, color(tint)));
+                let mark = div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size_full()
+                    .child(super::navigation::optical(window, cx, &t, &self.trailing_glyph, f.subtitle, color(tint), None, side_f, side_f));
                 let mark = if shown { mark.opacity(0.0) } else { mark };
                 slot = slot.child(if live { mark.group_hover(ROW, |s| s.opacity(0.0)) } else { mark });
             }
             if has_action {
                 let ink = if self.action_urgent { tk.palette.urgent } else { tk.roles.text_dim };
-                let mark = center().child(glyph(&t, window, self.action, f.subtitle, color(ink)));
+                let mark = div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size_full()
+                    .child(super::navigation::optical(window, cx, &t, &self.action, f.subtitle, color(ink), None, side_f, side_f));
                 slot = slot.child(match (live, shown) {
                     (false, _) => mark.opacity(0.0),
                     (true, true) => mark,
@@ -683,14 +715,15 @@ impl RenderOnce for Hero {
             let ink = if self.error { t.urgent() } else { t.dim() };
             labels = labels.child(spaced(&t, window, &self.status.to_uppercase(), f.caption, ink));
         }
-        let mut e = div()
-            .flex()
-            .flex_row()
-            .flex_shrink_0()
-            .items_center()
-            .child(glyph(&t, window, self.glyph, f.display, t.fg()).opacity(self.glyph_opacity))
-            .child(div().flex_shrink_0().w(px(t.space(14.0))))
-            .child(labels);
+        let mut e = div().flex().flex_row().flex_shrink_0().items_center();
+        if !self.glyph.is_empty() {
+            let slot_w = f.display as f32;
+            let slot_h = (f.display_large as f32).max((f.display as f32 * 1.35).ceil());
+            e = e
+                .child(super::navigation::optical(window, cx, &t, &self.glyph, f.display, t.fg(), None, slot_w, slot_h).opacity(self.glyph_opacity))
+                .child(div().flex_shrink_0().w(px(t.space(14.0))));
+        }
+        e = e.child(labels);
         if let Some(trailing) = self.trailing {
             e = e.child(div().flex_shrink_0().w(px(t.space(12.0)))).child(trailing);
         }

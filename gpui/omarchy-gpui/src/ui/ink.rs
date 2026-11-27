@@ -88,7 +88,7 @@ fn format4(sub: &[u8], ch: u32) -> Option<u16> {
     None
 }
 
-/// A glyph's TrueType ink box and font vertical metrics, all in ems.
+/// A glyph's TrueType ink box and advance, all in ems.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct GlyphInk {
     pub x_min: f32,
@@ -96,20 +96,6 @@ pub(crate) struct GlyphInk {
     pub y_min: f32,
     pub y_max: f32,
     pub advance: f32,
-    pub ascent: f32,
-    pub descent: f32,
-}
-
-fn vmetrics_in(b: &[u8]) -> Option<(f32, f32)> {
-    let head = table(b, b"head")?;
-    let upem = u16_at(head, 18)? as f32;
-    if upem <= 0.0 {
-        return None;
-    }
-    let hhea = table(b, b"hhea")?;
-    let ascent = i16_at(hhea, 4)? as f32;
-    let descent = i16_at(hhea, 6)? as f32;
-    Some((ascent / upem, descent / upem))
 }
 
 fn ink_in(b: &[u8], ch: char) -> Option<GlyphInk> {
@@ -124,8 +110,6 @@ fn ink_in(b: &[u8], ch: char) -> Option<GlyphInk> {
         return None;
     }
     let hhea = table(b, b"hhea")?;
-    let ascent = i16_at(hhea, 4)? as f32;
-    let descent = i16_at(hhea, 6)? as f32;
     let metrics = u16_at(hhea, 34)? as usize;
     let hmtx = table(b, b"hmtx")?;
     let advance = u16_at(hmtx, gid.min(metrics.saturating_sub(1)) * 4)? as f32;
@@ -145,8 +129,6 @@ fn ink_in(b: &[u8], ch: char) -> Option<GlyphInk> {
         x_max: i16_at(glyf, 6)? as f32 / upem,
         y_max: i16_at(glyf, 8)? as f32 / upem,
         advance: advance / upem,
-        ascent: ascent / upem,
-        descent: descent / upem,
     })
 }
 
@@ -156,12 +138,6 @@ thread_local! {
 
 fn font_bytes(path: &Path) -> Option<Rc<Vec<u8>>> {
     FONTS.with(|f| f.borrow_mut().entry(path.to_path_buf()).or_insert_with(|| std::fs::read(path).ok().map(Rc::new)).clone())
-}
-
-/// `(ascent, descent)` of the font file at `path`, in ems.
-pub(crate) fn font_vmetrics(path: &Path) -> Option<(f32, f32)> {
-    let bytes = font_bytes(path)?;
-    vmetrics_in(&bytes)
 }
 
 /// Ink box and vertical metrics of `ch` in the font file at `path`, in ems; None for a glyph the

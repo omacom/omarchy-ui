@@ -212,7 +212,7 @@ impl RenderOnce for MultiSelect {
         let search_for_keys = search.clone();
         let trigger = chrome(base, &t, &rest, &hot, self.cursor || focus.is_focused(window), t.radius())
             .child(label_elided(&t, words, tk.font.body, false, words_ink).flex_1())
-            .child(label(&t, "\u{f0140}", tk.font.body, false, color(pop.text.darker(1.2))))
+            .child(label(&t, "\u{f0140}", tk.font.body, false, t.dim()))
             .child(canvas(move |b, _, _| tb.set(Some(b)), |_, _, _, _| {}).absolute().size_full())
             .track_focus(&focus)
             .on_click(move |_, window, cx| {
@@ -250,15 +250,16 @@ impl RenderOnce for MultiSelect {
             return out;
         }
 
-        // The popup: the shell sizes it to its rows plus 50 for the search header, at most six.
+        // The popup: its rows (at most six) plus the search header, rule and vertical padding.
         let row_h = sp.popup_row_height as f32;
         let gap = sp.label_gap as f32;
-        let n = shown.len() as f32;
-        let content = n * row_h + (n - 1.0).max(0.0) * gap;
-        let height = (content + t.space(50.0)).min(row_h * 6.0 + 5.0 * gap + t.space(50.0));
         let line = c.normal.border.max_width().max(1.0);
         let hair = sp.hairline as f32;
         let header_h = row_h + sp.control_padding_x as f32;
+        let chrome_h = header_h + 1.0 + (line as f32 + hair) * 2.0;
+        let n = shown.len() as f32;
+        let content = if shown.is_empty() { row_h } else { n * row_h + (n - 1.0) * gap };
+        let height = (content + chrome_h).min(row_h * 6.0 + 5.0 * gap + chrome_h);
         let md = sp.md as f32;
         let fbw = c.normal.border.max_width().max(c.hover.border.max_width()) as f32;
 
@@ -320,7 +321,7 @@ impl RenderOnce for MultiSelect {
             list = list.items_center().justify_center().child(label(&t, empty_text, tk.font.body, false, t.faint()));
         }
         let box_size = t.space(16.0);
-        let box_radius = px((tk.radius as f32 / 2.0).max(2.0));
+        let box_radius = t.radius_small();
         for (row_index, (value, text)) in shown.iter().enumerate() {
             let selected = self.values.contains(value);
             let look = if selected {
@@ -344,6 +345,7 @@ impl RenderOnce for MultiSelect {
                 .items_center()
                 .gap(px(sp.row_gap as f32))
                 .px(px(sp.control_padding_x as f32))
+                .rounded(t.radius_small())
                 .cursor_pointer()
                 .when(lit, |r| r.bg(color(c.hover.fill)))
                 .child(check)
@@ -460,11 +462,13 @@ impl RenderOnce for ColorWell {
         let (w, h) = (t.space(44.0), t.space(26.0));
         let pad = sp.sm as f32;
         let r = t.radius_small();
+        let r_f = f32::from(r);
+        let ring_r = if r_f > 0.0 { (tk.radius as f32).min(r_f + pad) } else { 0.0 };
         let xxs = sp.xxs as f32;
         let inset = c.normal.border.widths[0] as f32 + xxs;
         let focus = focus_handle(&self.id, window, cx);
         let hot_now = self.cursor || focus.is_focused(window);
-        let ring = layer(&Look::new(Rgba::TRANSPARENT, c.hover.border.clone()), r);
+        let ring = layer(&Look::new(Rgba::TRANSPARENT, c.hover.border.clone()), px(ring_r));
         let ring = if hot_now { ring } else { ring.opacity(0.0).group_hover(super::GROUP, |s| s.opacity(1.0)) };
         let well = div()
             .absolute()
@@ -480,7 +484,7 @@ impl RenderOnce for ColorWell {
                     .top(px(inset))
                     .w(px(w - 2.0 * inset))
                     .h(px(h - 2.0 * inset))
-                    .rounded(px((f32::from(r) - xxs).max(0.0)))
+                    .rounded(px((r_f - inset).max(0.0)))
                     .bg(self.swatch),
             );
         let e = div()
@@ -544,7 +548,7 @@ impl RenderOnce for SwatchStrip {
         let gap = sp.xxs as f32;
         let cell = size + (gap + ring_w) * 2.0;
         let r = f32::from(t.radius_small());
-        let ring_r = if r > 0.0 { r + gap } else { 0.0 };
+        let ring_r = if r > 0.0 { r + gap + ring_w } else { 0.0 };
         let focus = focus_handle(&self.id, window, cx);
         let keyed = keyed_state(&self.id, "swatch-cursor", window, cx, || None::<usize>);
         let cursor = self.cursor.or(if focus.is_focused(window) { *keyed.read(cx) } else { None });
