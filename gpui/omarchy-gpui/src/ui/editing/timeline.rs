@@ -438,8 +438,8 @@ impl RenderOnce for Scrubber {
         let tw = text_width(window, &t, &total, size);
         let gap = sp.control_gap as f32;
         let bar_x = ew + gap;
-        let bar_w = w - tw - gap - bar_x;
-        let track_w = bar_w - knob;
+        let bar_w = (w - tw - gap - bar_x).max(0.0);
+        let track_w = (bar_w - knob).max(0.0);
         let progress = if self.duration > 0.0 { (self.position / self.duration).clamp(0.0, 1.0) } else { 0.0 };
         let mid = h / 2.0;
         let ty = ((h - line) / 2.0).floor();

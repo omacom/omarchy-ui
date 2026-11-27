@@ -995,13 +995,13 @@ export class ColorPicker extends OmarchyElement {
     const hex = this.hex;
     if (!this._typing && field.value !== hex) field.value = hex;
     const fh = field.offsetHeight;
-    Object.assign(this.$(".preview").style, { width: `${fh}px`, height: `${fh}px`, background: `rgba(${r}, ${g}, ${b}, ${this.alpha})` });
+    Object.assign(this.$(".preview").style, { width: `${fh}px`, height: `${fh}px`, backgroundColor: `rgba(${r}, ${g}, ${b}, ${this.alpha})` });
     const colors = (this.paletteNames || []).map(namedColor).filter(Boolean);
     const palette = this.$(".palette");
     const key = colors.join(",");
     if (palette.dataset.key !== key) {
       palette.dataset.key = key;
-      palette.innerHTML = colors.map((c) => `<div class="swatch" tabindex="0" role="option" data-color="${c}" style="background:${c}" aria-label="${c}"></div>`).join("");
+      palette.innerHTML = colors.map((c) => `<div class="swatch" tabindex="0" role="option" data-color="${c}" style="background-color:${c}" aria-label="${c}"></div>`).join("");
     }
     for (const sw of palette.querySelectorAll(".swatch")) {
       const chosen = sw.dataset.color === hex.slice(0, 7);

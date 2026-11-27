@@ -230,7 +230,7 @@ export class MultiSelect extends OmarchyElement {
     const head = this.$(".head").offsetHeight;
     const chrome = head + 1 + padY;
     const rows = [...this.list.querySelectorAll(".row")];
-    const content = rows.reduce((h, r) => h + r.offsetHeight, 0) + Math.max(0, rows.length - 1) * lgap;
+    const content = Math.max(row, rows.reduce((h, r) => h + r.offsetHeight, 0) + Math.max(0, rows.length - 1) * lgap);
     const t = this.trigger.getBoundingClientRect();
     const below = Math.max(0, document.documentElement.clientHeight - (t.bottom + gap) - Math.max(1, Math.round(12 * scale)));
     const height = Math.min(below, content + chrome, row * 6 + 5 * lgap + chrome);

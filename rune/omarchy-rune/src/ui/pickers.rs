@@ -354,7 +354,7 @@ impl MultiSelect {
         let header_h = row_h + sp.control_padding_x as f32;
         let chrome_h = header_h + 1.0 + pad * 2.0;
         let n = shown.len() as f32;
-        let content = n * row_h + (n - 1.0).max(0.0) * gap;
+        let content = (n * row_h + (n - 1.0).max(0.0) * gap).max(row_h);
         let max_rows = row_h * 6.0 + 5.0 * gap;
         let height = content.min(max_rows) + chrome_h;
 

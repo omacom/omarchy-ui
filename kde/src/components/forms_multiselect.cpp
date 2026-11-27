@@ -128,7 +128,7 @@ public:
     const QMargins m = insets();
     const int rh = tk.spacing("popupRowHeight"), gap = tk.spacing("labelGap");
     const qreal chrome = headerHeight() + 1 + m.top() + m.bottom();
-    const qreal ideal = listHeight() + chrome;
+    const qreal ideal = qMax<qreal>(rh, listHeight()) + chrome;
     const qreal most = rh * 6 + 5 * gap + chrome;
     const qreal below = qMax(0, win->height() - at.y() - tk.space(12));
     setGeometry(at.x(), at.y(), int(tr.width()), int(std::lround(qMin(qMin(below, ideal), most))));

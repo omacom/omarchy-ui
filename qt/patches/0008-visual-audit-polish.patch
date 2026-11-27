@@ -83,7 +83,7 @@ index ba8346c..4dd111b 100644
                ? Style.hoverFillFor(root.foreground, root.accent)
                : "transparent"
 diff --git c/qt/qml/Omarchy/Ui/MultiSelect.qml w/qt/qml/Omarchy/Ui/MultiSelect.qml
-index a1cb7f9..7f80ec2 100644
+index a1cb7f9..7335ece 100644
 --- c/qt/qml/Omarchy/Ui/MultiSelect.qml
 +++ w/qt/qml/Omarchy/Ui/MultiSelect.qml
 @@ -158,9 +158,10 @@ Item {
@@ -123,7 +123,7 @@ index a1cb7f9..7f80ec2 100644
 -        readonly property real _idealContent: resultList.contentHeight + Style.space(50)
 -        readonly property real _maxRowsHeight: root.popupRowHeight * 6 + 5 * Style.spacing.labelGap + Style.space(50)
 +        readonly property real _chromeHeight: searchHeader.height + 1 + topPadding + bottomPadding
-+        readonly property real _idealContent: resultList.contentHeight + _chromeHeight
++        readonly property real _idealContent: Math.max(root.popupRowHeight, resultList.contentHeight) + _chromeHeight
 +        readonly property real _maxRowsHeight: root.popupRowHeight * 6 + 5 * Style.spacing.labelGap + _chromeHeight
  
          function reposition() {
@@ -243,7 +243,7 @@ index c37ea98..a94c39c 100644
      text: root.iconText
      color: root.enabled
 diff --git c/qt/qml/Omarchy/Ui/PanelSlider.qml w/qt/qml/Omarchy/Ui/PanelSlider.qml
-index db37773..544c19b 100644
+index db37773..8f294f1 100644
 --- c/qt/qml/Omarchy/Ui/PanelSlider.qml
 +++ w/qt/qml/Omarchy/Ui/PanelSlider.qml
 @@ -11,7 +11,7 @@ Item {
@@ -255,7 +255,7 @@ index db37773..544c19b 100644
    property color fillColor: bar ? bar.foreground : Commons.Color.foreground
    property color knobColor: bar ? bar.foreground : Commons.Color.foreground
    property bool dragging: false
-@@ -48,7 +48,11 @@ Item {
+@@ -48,7 +48,14 @@ Item {
      return track.x + track.width * (root.mirrored ? 1 - fraction : fraction)
    }
  
@@ -263,12 +263,15 @@ index db37773..544c19b 100644
 +  readonly property real _ring: Math.max(1, Style.space(2))
 +  readonly property real _innerKnob: Math.max(4, knobSize - _ring * 2)
 +  readonly property real _knobCenter: trackX(progress)
++  // Follow the displayed (possibly animating) knob center so the split-track
++  // gap travels smoothly with the knob instead of jumping ahead of it.
++  readonly property real _displayKnobCenter: knob.x + knob.width / 2
 +
 +  Item {
      id: track
      anchors.verticalCenter: parent.verticalCenter
      anchors.left: parent.left
-@@ -56,47 +60,68 @@ Item {
+@@ -56,47 +63,68 @@ Item {
      anchors.leftMargin: root.knobSize / 2
      anchors.rightMargin: root.knobSize / 2
      height: root.trackHeight
@@ -283,9 +286,9 @@ index db37773..544c19b 100644
 +    id: fill
 +    readonly property real _end: root.mirrored
 +      ? track.x + track.width
-+      : Math.max(track.x, Math.min(track.x + track.width, root._knobCenter - root.knobSize / 2))
++      : Math.max(track.x, Math.min(track.x + track.width, root._displayKnobCenter - root.knobSize / 2))
 +    readonly property real _start: root.mirrored
-+      ? Math.min(track.x + track.width, Math.max(track.x, root._knobCenter + root.knobSize / 2))
++      ? Math.min(track.x + track.width, Math.max(track.x, root._displayKnobCenter + root.knobSize / 2))
 +      : track.x
 +    anchors.verticalCenter: track.verticalCenter
 +    x: _start
@@ -301,9 +304,9 @@ index db37773..544c19b 100644
 +    id: unfilledTrack
 +    readonly property real _start: root.mirrored
 +      ? track.x
-+      : Math.min(track.x + track.width, Math.max(track.x, root._knobCenter + root.knobSize / 2))
++      : Math.min(track.x + track.width, Math.max(track.x, root._displayKnobCenter + root.knobSize / 2))
 +    readonly property real _end: root.mirrored
-+      ? Math.max(track.x, Math.min(track.x + track.width, root._knobCenter - root.knobSize / 2))
++      ? Math.max(track.x, Math.min(track.x + track.width, root._displayKnobCenter - root.knobSize / 2))
 +      : track.x + track.width
      anchors.verticalCenter: track.verticalCenter
 -    anchors.left: track.left
@@ -329,7 +332,7 @@ index db37773..544c19b 100644
      Rectangle {
        required property int index
 +      readonly property real _cx: root.trackX((index + 1) / (root.tickCount - 1))
-+      visible: Math.abs(_cx - root._knobCenter) > root.knobSize / 2
++      visible: Math.abs(_cx - root._displayKnobCenter) > root.knobSize / 2
        width: Math.max(1, Style.space(2))
        height: root.trackHeight + Style.space(4)
        radius: 1

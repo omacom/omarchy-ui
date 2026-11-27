@@ -59,7 +59,7 @@ impl Slider {
         let height = t.space(22.0).max(knob + sp.md as f32);
         let progress = if self.max > self.min { ((self.value - self.min) / (self.max - self.min)).clamp(0.0, 1.0) } else { 0.0 };
         let track_x = knob / 2.0;
-        let track_w = width - knob;
+        let track_w = (width - knob).max(0.0);
         let mid = height / 2.0;
         let ring = 1f32.max(t.space(2.0));
         let inner_knob = 4f32.max(knob - ring * 2.0);

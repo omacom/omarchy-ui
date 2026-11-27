@@ -51,6 +51,9 @@ Item {
   readonly property real _ring: Math.max(1, Style.space(2))
   readonly property real _innerKnob: Math.max(4, knobSize - _ring * 2)
   readonly property real _knobCenter: trackX(progress)
+  // Follow the displayed (possibly animating) knob center so the split-track
+  // gap travels smoothly with the knob instead of jumping ahead of it.
+  readonly property real _displayKnobCenter: knob.x + knob.width / 2
 
   Item {
     id: track
@@ -69,9 +72,9 @@ Item {
     id: fill
     readonly property real _end: root.mirrored
       ? track.x + track.width
-      : Math.max(track.x, Math.min(track.x + track.width, root._knobCenter - root.knobSize / 2))
+      : Math.max(track.x, Math.min(track.x + track.width, root._displayKnobCenter - root.knobSize / 2))
     readonly property real _start: root.mirrored
-      ? Math.min(track.x + track.width, Math.max(track.x, root._knobCenter + root.knobSize / 2))
+      ? Math.min(track.x + track.width, Math.max(track.x, root._displayKnobCenter + root.knobSize / 2))
       : track.x
     anchors.verticalCenter: track.verticalCenter
     x: _start
@@ -86,9 +89,9 @@ Item {
     id: unfilledTrack
     readonly property real _start: root.mirrored
       ? track.x
-      : Math.min(track.x + track.width, Math.max(track.x, root._knobCenter + root.knobSize / 2))
+      : Math.min(track.x + track.width, Math.max(track.x, root._displayKnobCenter + root.knobSize / 2))
     readonly property real _end: root.mirrored
-      ? Math.max(track.x, Math.min(track.x + track.width, root._knobCenter - root.knobSize / 2))
+      ? Math.max(track.x, Math.min(track.x + track.width, root._displayKnobCenter - root.knobSize / 2))
       : track.x + track.width
     anchors.verticalCenter: track.verticalCenter
     x: _start
@@ -104,7 +107,7 @@ Item {
     Rectangle {
       required property int index
       readonly property real _cx: root.trackX((index + 1) / (root.tickCount - 1))
-      visible: Math.abs(_cx - root._knobCenter) > root.knobSize / 2
+      visible: Math.abs(_cx - root._displayKnobCenter) > root.knobSize / 2
       width: Math.max(1, Style.space(2))
       height: root.trackHeight + Style.space(4)
       radius: 1

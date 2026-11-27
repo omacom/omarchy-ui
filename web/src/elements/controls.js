@@ -676,7 +676,7 @@ export class Slider extends OmarchyElement {
     trackPointer(this);
     const fromX = (x) => {
       const r = this.getBoundingClientRect();
-      const k = parseFloat(getComputedStyle(this).getPropertyValue("--knob")) || 14;
+      const k = this._knobPx();
       let f = Math.max(0, Math.min(1, (x - r.left - k / 2) / Math.max(1, r.width - k)));
       if (getComputedStyle(this).direction === "rtl") f = 1 - f;
       let v = this.min + f * (this.max - this.min);
@@ -733,6 +733,10 @@ export class Slider extends OmarchyElement {
     this.emit("input", { value: v });
     this.emit("change", { value: v });
   }
+  _knobPx() {
+    const ch = parseFloat(getComputedStyle(this).getPropertyValue("--omarchy-space-control-height")) || 28;
+    return Math.max(14, Math.round(ch * 0.38));
+  }
   _updateTicks() {
     const ticks = this.$(".ticks");
     if (!ticks || !ticks.childElementCount) return;
@@ -741,7 +745,7 @@ export class Slider extends OmarchyElement {
     const p = Math.max(0, Math.min(1, (v - this.min) / range));
     const w = this.clientWidth;
     if (!(w > 0)) return;
-    const k = parseFloat(getComputedStyle(this).getPropertyValue("--knob")) || 14;
+    const k = this._knobPx();
     const tw = Math.max(0, w - k);
     const knobCx = k / 2 + tw * p;
     const n = this.ticks;

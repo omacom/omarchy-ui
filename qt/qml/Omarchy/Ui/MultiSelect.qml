@@ -259,7 +259,7 @@ Item {
         readonly property var _windowItem: trigger.Window.window ? trigger.Window.window.contentItem : null
         readonly property real _windowHeight: _windowItem ? _windowItem.height : 0
         readonly property real _chromeHeight: searchHeader.height + 1 + topPadding + bottomPadding
-        readonly property real _idealContent: resultList.contentHeight + _chromeHeight
+        readonly property real _idealContent: Math.max(root.popupRowHeight, resultList.contentHeight) + _chromeHeight
         readonly property real _maxRowsHeight: root.popupRowHeight * 6 + 5 * Style.spacing.labelGap + _chromeHeight
 
         function reposition() {

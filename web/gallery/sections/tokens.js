@@ -22,13 +22,13 @@ export default {
   .tk-scale { display: flex; flex-direction: column; align-items: flex-start; gap: var(--omarchy-space-xs); }
 </style>
 <div class="tk-flow fill">
-  ${swatches.map((s) => `<div class="tk-swatch"><div style="background: var(--omarchy-${s})"></div><span class="text">${s}</span></div>`).join("")}
+  ${swatches.map((s) => `<div class="tk-swatch"><div style="background-color: var(--omarchy-${s})"></div><span class="text">${s}</span></div>`).join("")}
 </div>
 <div class="tk-flow fill">
   ${states
     .map(
       ([label, s]) =>
-        `<div class="tk-chip text" style="background: var(--omarchy-control-${s}-fill); border-color: var(--omarchy-control-${s}-border); border-width: var(--omarchy-control-${s}-border-width);${s === "selected" ? " font-weight: bold; color: var(--omarchy-control-selected-text);" : ""}">${label}</div>`,
+        `<div class="tk-chip text" style="background-color: var(--omarchy-control-${s}-fill); border-color: var(--omarchy-control-${s}-border); border-width: var(--omarchy-control-${s}-border-width);${s === "selected" ? " font-weight: bold; color: var(--omarchy-control-selected-text);" : ""}">${label}</div>`,
     )
     .join("")}
 </div>

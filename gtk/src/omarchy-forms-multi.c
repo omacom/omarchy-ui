@@ -147,7 +147,7 @@ popup_h (OmarchyMultiSelect *self)
   const OmarchyTokens *t = omarchy_tokens ();
   OmarchyBorder b = popup_border ();
   int chrome = header_h () + 1 + (int) (b.widths[0] + b.widths[2]) + 2 * t->hairline;
-  int ideal = list_content_h (self) + chrome;
+  int ideal = MAX (t->popup_row_height, list_content_h (self)) + chrome;
   int most = t->popup_row_height * 6 + 5 * t->label_gap + chrome;
   return MIN (ideal, most);
 }

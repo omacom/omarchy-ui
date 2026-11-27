@@ -78,7 +78,7 @@ impl RenderOnce for Slider {
         let height = t.space(22.0).max(knob + sp.md as f32);
         let (min, max, value, step) = (self.min, self.max, self.value, self.step);
         let progress = if max > min { ((value - min) / (max - min)).clamp(0.0, 1.0) } else { 0.0 };
-        let track_w = width - knob;
+        let track_w = (width - knob).max(0.0);
         let mid = height / 2.0;
         let focus = focus_handle(&self.id, window, cx);
         let drag = keyed_state(&self.id, "slider", window, cx, Drag::default);
